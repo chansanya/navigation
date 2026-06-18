@@ -5,14 +5,24 @@ interface VerifyTokenResponse {
   valid: boolean
 }
 
+interface AuthSessionResponse {
+  authenticated: boolean
+}
+
+function clearLegacyAuthStorage() {
+  if (typeof window === 'undefined') return
+  window.localStorage.removeItem('auth')
+}
+
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string>('')
   const isAuthenticated = ref<boolean>(false)
 
   async function verifyToken(inputToken: string): Promise<boolean> {
     try {
+      clearLegacyAuthStorage()
       const response = await fetch('/api/auth/verify', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -22,10 +32,10 @@ export const useAuthStore = defineStore('auth', () => {
       const data = await response.json() as VerifyTokenResponse
 
       if (data.valid) {
-        token.value = inputToken
         isAuthenticated.value = true
         return true
       } else {
+        isAuthenticated.value = false
         return false
       }
     } catch (error) {
@@ -34,23 +44,40 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  function login(inputToken: string) {
-    token.value = inputToken
-    isAuthenticated.value = true
+  async function checkSession(): Promise<boolean> {
+    try {
+      clearLegacyAuthStorage()
+      const response = await fetch('/api/auth/session', {
+        credentials: 'same-origin'
+      })
+      const data = await response.json() as AuthSessionResponse
+
+      isAuthenticated.value = Boolean(data.authenticated)
+      return isAuthenticated.value
+    } catch {
+      isAuthenticated.value = false
+      return false
+    }
   }
 
-  function logout() {
-    token.value = ''
-    isAuthenticated.value = false
+  async function logout() {
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin'
+      })
+    } finally {
+      clearLegacyAuthStorage()
+      isAuthenticated.value = false
+    }
   }
+
+  clearLegacyAuthStorage()
 
   return {
-    token,
     isAuthenticated,
     verifyToken,
-    login,
+    checkSession,
     logout
   }
-}, {
-  persist: true
 })

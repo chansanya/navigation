@@ -10,9 +10,13 @@
 <script setup lang="ts">
 import { computed, onMounted, watch } from 'vue'
 import { useSettingsStore } from './stores/settings'
+import { useAuthStore } from './stores/auth'
+import { usePrivacyStore } from './stores/privacy'
 import BackgroundLayer from './components/layout/BackgroundLayer.vue'
 
 const settingsStore = useSettingsStore()
+const authStore = useAuthStore()
+const privacyStore = usePrivacyStore()
 
 const themeClass = computed(() => `theme-${settingsStore.theme}`)
 
@@ -51,6 +55,8 @@ const appearanceStyle = computed(() => {
 })
 
 onMounted(() => {
+  authStore.checkSession()
+  privacyStore.checkSession()
   settingsStore.fetchSettings()
 })
 </script>

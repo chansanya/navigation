@@ -61,7 +61,6 @@
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { usePrivacyStore } from '@/stores/privacy'
 import Loading from '@/components/common/Loading.vue'
 
@@ -86,7 +85,6 @@ interface Category {
   sort: number
 }
 
-const authStore = useAuthStore()
 const privacyStore = usePrivacyStore()
 const loading = ref(false)
 const submissions = ref<Submission[]>([])
@@ -112,7 +110,6 @@ async function fetchData() {
 async function fetchSubmissions() {
   const response = await fetch('/api/submissions', {
     headers: {
-      'Authorization': `Bearer ${authStore.token}`,
       ...privacyStore.privacyHeaders()
     }
   })
@@ -145,7 +142,6 @@ async function reviewSubmission(submission: Submission, action: 'approve' | 'rej
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${authStore.token}`,
       ...privacyStore.privacyHeaders()
     },
     body: JSON.stringify({

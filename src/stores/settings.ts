@@ -270,14 +270,11 @@ export const useSettingsStore = defineStore('settings', () => {
 
   // 保存设置到后端
   async function saveSettings(): Promise<boolean> {
-    const authStore = useAuthStore()
-
     try {
       const response = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authStore.token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           siteTitle: siteTitle.value,

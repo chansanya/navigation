@@ -186,11 +186,7 @@ npm run sync:local-db
 - `PUT /api/submissions/:id`
 - `GET /api/cloudflare/projects`
 
-隐私空间相关请求需附加：
-
-```http
-X-Privacy-Token: <PRIVATE_PASSWORD>
-```
+管理员登录和隐私模式都使用服务端签名的 `HttpOnly` Cookie，会话密钥不会写入 localStorage 或 sessionStorage。
 
 URL 重复检测会规范化 http/https URL，忽略末尾 `/`、域名大小写和默认端口差异。
 

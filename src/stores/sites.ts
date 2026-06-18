@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { useAuthStore } from './auth'
 import { usePrivacyStore, PRIVATE_CATEGORY_NAME } from './privacy'
 
 export interface Site {
@@ -109,7 +108,6 @@ export const useSitesStore = defineStore('sites', () => {
 
   // 创建分类
   async function createCategory(name: string): Promise<boolean> {
-    const authStore = useAuthStore()
     const privacyStore = usePrivacyStore()
 
     try {
@@ -117,7 +115,6 @@ export const useSitesStore = defineStore('sites', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authStore.token}`,
           ...privacyStore.privacyHeaders()
         },
         body: JSON.stringify({ name })
@@ -138,7 +135,6 @@ export const useSitesStore = defineStore('sites', () => {
 
   // 更新分类排序
   async function updateCategorySort(categoryId: number, sort: number): Promise<boolean> {
-    const authStore = useAuthStore()
     const privacyStore = usePrivacyStore()
 
     try {
@@ -146,7 +142,6 @@ export const useSitesStore = defineStore('sites', () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authStore.token}`,
           ...privacyStore.privacyHeaders()
         },
         body: JSON.stringify({ sort })
@@ -167,14 +162,12 @@ export const useSitesStore = defineStore('sites', () => {
 
   // 删除分类
   async function deleteCategory(categoryId: number): Promise<boolean> {
-    const authStore = useAuthStore()
     const privacyStore = usePrivacyStore()
 
     try {
       const response = await fetch(`/api/categories/${categoryId}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${authStore.token}`,
           ...privacyStore.privacyHeaders()
         }
       })
@@ -194,7 +187,6 @@ export const useSitesStore = defineStore('sites', () => {
 
   // 创建站点
   async function createSite(siteData: Site): Promise<boolean> {
-    const authStore = useAuthStore()
     const privacyStore = usePrivacyStore()
 
     if (siteData.category === PRIVATE_CATEGORY_NAME && !privacyStore.isUnlocked) {
@@ -207,7 +199,6 @@ export const useSitesStore = defineStore('sites', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authStore.token}`,
           ...privacyStore.privacyHeaders()
         },
         body: JSON.stringify(siteData)
@@ -231,7 +222,6 @@ export const useSitesStore = defineStore('sites', () => {
 
   // 更新站点
   async function updateSite(id: number, siteData: Partial<Site>): Promise<boolean> {
-    const authStore = useAuthStore()
     const privacyStore = usePrivacyStore()
 
     if (siteData.category === PRIVATE_CATEGORY_NAME && !privacyStore.isUnlocked) {
@@ -244,7 +234,6 @@ export const useSitesStore = defineStore('sites', () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authStore.token}`,
           ...privacyStore.privacyHeaders()
         },
         body: JSON.stringify(siteData)
@@ -268,14 +257,12 @@ export const useSitesStore = defineStore('sites', () => {
 
   // 删除站点
   async function deleteSite(id: number): Promise<boolean> {
-    const authStore = useAuthStore()
     const privacyStore = usePrivacyStore()
 
     try {
       const response = await fetch(`/api/sites/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${authStore.token}`,
           ...privacyStore.privacyHeaders()
         }
       })

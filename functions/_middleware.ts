@@ -1,5 +1,7 @@
 // 全局中间件：CORS + 认证预处理
 
+import { ADMIN_SESSION_COOKIE, PRIVACY_SESSION_COOKIE, verifySignedSessionCookie } from './session'
+
 interface Env {
   DB: D1Database
   ADMIN_TOKEN: string
@@ -15,7 +17,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Privacy-Token',
+        'Access-Control-Allow-Headers': 'Content-Type',
         'Access-Control-Max-Age': '86400',
       },
     })
@@ -26,17 +28,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   context.data.adminToken = env.ADMIN_TOKEN || ''
   context.data.privatePassword = env.PRIVATE_PASSWORD || ''
 
-  // 检查是否携带有效的 token
-  const authHeader = request.headers.get('Authorization')
-  if (authHeader && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7)
-    context.data.isAuthenticated = token === context.data.adminToken
-  } else {
-    context.data.isAuthenticated = false
-  }
+  context.data.isAuthenticated = await verifySignedSessionCookie(request, env.ADMIN_TOKEN || '', ADMIN_SESSION_COOKIE)
 
-  const privacyHeader = request.headers.get('X-Privacy-Token') || ''
-  context.data.isPrivacyUnlocked = Boolean(context.data.privatePassword) && privacyHeader === context.data.privatePassword
+  context.data.isPrivacyUnlocked = await verifySignedSessionCookie(request, env.PRIVATE_PASSWORD || '', PRIVACY_SESSION_COOKIE)
 
   // 继续处理请求
   const response = await context.next()
@@ -45,7 +39,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const newHeaders = new Headers(response.headers)
   newHeaders.set('Access-Control-Allow-Origin', '*')
   newHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  newHeaders.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Privacy-Token')
+  newHeaders.set('Access-Control-Allow-Headers', 'Content-Type')
 
   return new Response(response.body, {
     status: response.status,

@@ -114,7 +114,6 @@
 <script setup lang="ts">
 import { ref, computed, onBeforeUnmount, onMounted, watch } from 'vue'
 import type { Site } from '@/stores/sites'
-import { useAuthStore } from '@/stores/auth'
 import { usePrivacyStore } from '@/stores/privacy'
 import AppIcon from '@/components/common/AppIcon.vue'
 
@@ -129,7 +128,6 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const authStore = useAuthStore()
 const privacyStore = usePrivacyStore()
 
 const isEdit = computed(() => !!props.site?.id)
@@ -267,7 +265,6 @@ async function addCustomCategory() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${authStore.token}`,
         ...privacyStore.privacyHeaders()
       },
       body: JSON.stringify({ name: customCategoryInput.value.trim() })

@@ -1,6 +1,5 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { useAuthStore } from './auth'
 import { usePrivacyStore } from './privacy'
 import type { Site } from './sites'
 
@@ -103,7 +102,6 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
   }
 
   async function createShortcut(shortcutData: Shortcut): Promise<boolean> {
-    const authStore = useAuthStore()
     const privacyStore = usePrivacyStore()
 
     try {
@@ -111,7 +109,6 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authStore.token}`,
           ...privacyStore.privacyHeaders()
         },
         body: JSON.stringify(shortcutData)
@@ -133,7 +130,6 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
   }
 
   async function updateShortcut(id: number, shortcutData: Partial<Shortcut> & Pick<Shortcut, 'name' | 'url'>): Promise<boolean> {
-    const authStore = useAuthStore()
     const privacyStore = usePrivacyStore()
 
     try {
@@ -141,7 +137,6 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authStore.token}`,
           ...privacyStore.privacyHeaders()
         },
         body: JSON.stringify(shortcutData)
@@ -163,14 +158,12 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
   }
 
   async function deleteShortcut(id: number): Promise<boolean> {
-    const authStore = useAuthStore()
     const privacyStore = usePrivacyStore()
 
     try {
       const response = await fetch(`/api/shortcuts/${id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${authStore.token}`,
           ...privacyStore.privacyHeaders()
         }
       })

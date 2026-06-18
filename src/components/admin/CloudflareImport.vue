@@ -72,7 +72,6 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useAuthStore } from '@/stores/auth'
 import { useSitesStore } from '@/stores/sites'
 import type { Category } from '@/stores/sites'
 
@@ -89,7 +88,6 @@ const emit = defineEmits<{
   imported: []
 }>()
 
-const authStore = useAuthStore()
 const sitesStore = useSitesStore()
 
 const loading = ref(false)
@@ -161,11 +159,7 @@ async function fetchProjects() {
 
   try {
     const [response] = await Promise.all([
-      fetch('/api/cloudflare/projects', {
-        headers: {
-          'Authorization': `Bearer ${authStore.token}`
-        }
-      }),
+      fetch('/api/cloudflare/projects'),
       fetchExistingSites()
     ])
 
