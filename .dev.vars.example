@@ -1,0 +1,9 @@
+# Local Cloudflare Pages Functions variables.
+# Keep real secrets in .dev.vars. Do not commit .dev.vars.
+
+ADMIN_TOKEN=change-me-admin-token
+PRIVATE_PASSWORD=change-me-private-password
+
+# Optional: enable Cloudflare Pages/Workers project sync in the admin UI.
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=

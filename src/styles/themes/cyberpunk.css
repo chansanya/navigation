@@ -1,0 +1,187 @@
+/* 赛博朋克主题 */
+
+.theme-cyberpunk {
+  color: #00ffff;
+  background: #0a0e27;
+}
+
+.theme-cyberpunk .site-card {
+  background: var(--appearance-card-bg);
+  color: var(--appearance-card-text-color);
+  border: 2px solid var(--appearance-card-border-color);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3),
+              inset 0 0 20px rgba(0, 255, 255, 0.05);
+}
+
+.theme-cyberpunk .site-card:hover {
+  border-color: var(--appearance-card-border-color);
+  box-shadow: 0 0 30px rgba(255, 0, 255, 0.5),
+              inset 0 0 30px rgba(255, 0, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.theme-cyberpunk .card-title {
+  color: var(--appearance-card-text-color);
+  text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.theme-cyberpunk .card-description {
+  color: var(--appearance-card-text-color);
+}
+
+.theme-cyberpunk .category-title {
+  color: #ff00ff;
+  text-shadow: 0 0 20px rgba(255, 0, 255, 0.8);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.theme-cyberpunk .home-header {
+  background: var(--appearance-topbar-bg);
+  color: var(--appearance-topbar-text-color);
+  border: 2px solid var(--appearance-topbar-border-color);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+}
+
+.theme-cyberpunk .btn-admin {
+  background: var(--appearance-topbar-control-bg);
+  color: var(--appearance-topbar-text-color);
+  border-color: color-mix(in srgb, var(--appearance-topbar-border-color) 38%, transparent);
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.theme-cyberpunk .btn-admin.active {
+  background: color-mix(in srgb, var(--primary-color) 38%, transparent);
+  color: #ffffff;
+  border-color: color-mix(in srgb, var(--appearance-topbar-border-color) 72%, var(--primary-color));
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary-color) 22%, transparent),
+    0 0 22px color-mix(in srgb, var(--primary-color) 54%, transparent);
+}
+
+.theme-cyberpunk .btn-admin:hover {
+  background: var(--appearance-topbar-control-bg-hover);
+  color: var(--appearance-topbar-text-color);
+  box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+}
+
+.theme-cyberpunk .btn-admin.active:hover {
+  background: color-mix(in srgb, var(--primary-color) 48%, transparent);
+  color: #ffffff;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--primary-color) 26%, transparent),
+    0 0 28px color-mix(in srgb, var(--primary-color) 66%, transparent);
+}
+
+.theme-cyberpunk .btn-settings {
+  background: var(--appearance-topbar-control-bg);
+  color: var(--appearance-topbar-text-color);
+  border-color: color-mix(in srgb, var(--appearance-topbar-border-color) 38%, transparent);
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+}
+
+.theme-cyberpunk .home-header .site-search-box {
+  background: color-mix(in srgb, var(--appearance-topbar-bg) 72%, transparent);
+  color: var(--appearance-topbar-text-color);
+  border: 2px solid var(--appearance-topbar-border-color);
+}
+
+.theme-cyberpunk .auth-modal,
+.theme-cyberpunk .privacy-modal,
+.theme-cyberpunk .settings-panel,
+.theme-cyberpunk .modal-content {
+  background: #1a1f3a;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+  color: #00ffff;
+}
+
+.theme-cyberpunk .auth-modal h2,
+.theme-cyberpunk .privacy-modal h2 {
+  color: #00ffff;
+}
+
+.theme-cyberpunk .auth-modal p,
+.theme-cyberpunk .privacy-modal p {
+  color: rgba(0, 255, 255, 0.74);
+}
+
+.theme-cyberpunk input,
+.theme-cyberpunk textarea {
+  background: #0a0e27;
+  border: 2px solid #00ffff;
+  color: #00ffff;
+}
+
+.theme-cyberpunk input:focus,
+.theme-cyberpunk textarea:focus {
+  border-color: #ff00ff;
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.5);
+}
+
+/* 滚动条 */
+.theme-cyberpunk ::-webkit-scrollbar-track {
+  background: #0a0e27;
+}
+
+.theme-cyberpunk ::-webkit-scrollbar-thumb {
+  background: #00ffff;
+  box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+}
+
+.theme-cyberpunk .site-search-box,
+.theme-cyberpunk .btn-sites,
+.theme-cyberpunk .engine-tab {
+  background: #1a1f3a;
+  color: #00ffff;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 14px rgba(0, 255, 255, 0.35);
+}
+
+.theme-cyberpunk .site-search-box:focus-within,
+.theme-cyberpunk .btn-sites:hover,
+.theme-cyberpunk .engine-tab:hover {
+  background: rgba(0, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.theme-cyberpunk .engine-tab.active {
+  background: #00ffff;
+  color: #0a0e27;
+  border-color: #00ffff;
+  box-shadow: 0 0 24px rgba(0, 255, 255, 0.75);
+}
+
+.theme-cyberpunk .search-box {
+  background: #1a1f3a;
+  color: #00ffff;
+  border: 2px solid #00ffff;
+  box-shadow: 0 0 28px rgba(0, 255, 255, 0.45),
+              inset 0 0 18px rgba(0, 255, 255, 0.08);
+}
+
+.theme-cyberpunk .search-box:focus-within {
+  border-color: #ff00ff;
+  box-shadow: 0 0 32px rgba(255, 0, 255, 0.55),
+              inset 0 0 22px rgba(255, 0, 255, 0.1);
+}
+
+.theme-cyberpunk .search-input {
+  color: #00ffff;
+}
+
+.theme-cyberpunk .search-input::placeholder {
+  color: rgba(0, 255, 255, 0.58);
+}
+
+.theme-cyberpunk .search-icon,
+.theme-cyberpunk .logo {
+  color: #00ffff;
+}
+
+.theme-cyberpunk .btn-search {
+  background: #00ffff;
+  color: #0a0e27;
+  box-shadow: 0 0 18px rgba(0, 255, 255, 0.55);
+}

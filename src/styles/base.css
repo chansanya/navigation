@@ -1,0 +1,100 @@
+/* 基础样式重置 */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-family);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-y: auto;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  outline: none;
+  cursor: pointer;
+  background: none;
+}
+
+input, textarea {
+  font-family: inherit;
+  border: none;
+  outline: none;
+}
+
+ul, ol {
+  list-style: none;
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* 滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* 面板内部可滚动区域隐藏滚动条，保留滚动能力 */
+.category-sidebar,
+.sites-panel,
+.settings-panel,
+.modal-content,
+.submission-dialog,
+.review-dialog,
+.import-modal .modal-content,
+.bookmark-modal .modal-content,
+.visibility-list,
+.shortcut-dialog,
+.site-editor,
+.select-dropdown {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+.category-sidebar::-webkit-scrollbar,
+.sites-panel::-webkit-scrollbar,
+.settings-panel::-webkit-scrollbar,
+.modal-content::-webkit-scrollbar,
+.submission-dialog::-webkit-scrollbar,
+.review-dialog::-webkit-scrollbar,
+.import-modal .modal-content::-webkit-scrollbar,
+.bookmark-modal .modal-content::-webkit-scrollbar,
+.visibility-list::-webkit-scrollbar,
+.shortcut-dialog::-webkit-scrollbar,
+.site-editor::-webkit-scrollbar,
+.select-dropdown::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
