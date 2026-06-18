@@ -2,7 +2,7 @@ const SESSION_VERSION = 'v1'
 
 export const ADMIN_SESSION_COOKIE = 'nav_admin_session'
 export const PRIVACY_SESSION_COOKIE = 'nav_privacy_session'
-export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7
+export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 15
 
 function base64UrlEncode(buffer: ArrayBuffer) {
   const bytes = new Uint8Array(buffer)
