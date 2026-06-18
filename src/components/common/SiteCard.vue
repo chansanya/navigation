@@ -2,12 +2,21 @@
   <div
     class="site-card"
     :class="{ 'is-dragging': isDragging }"
-    :draggable="showActions"
+    :draggable="isDraggable"
     @dragstart="handleDragStart"
     @dragend="handleDragEnd"
   >
     <!-- 右上角管理按钮 -->
     <div v-if="showActions" class="card-actions-corner" :class="{ 'has-shortcut': isShortcut }">
+      <button
+        type="button"
+        class="btn-move-corner"
+        @click.stop="$emit('move', site)"
+        title="移动到分类"
+        aria-label="移动到分类"
+      >
+        <AppIcon name="move" :size="14" />
+      </button>
       <button
         class="btn-shortcut-corner"
         :class="{ active: isShortcut }"
@@ -66,6 +75,7 @@ import AppIcon from './AppIcon.vue'
 interface Props {
   site: Site
   showActions?: boolean
+  canDrag?: boolean
   showCategoryBadge?: boolean
 }
 
@@ -73,14 +83,17 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   edit: [site: Site]
   delete: [site: Site]
+  move: [site: Site]
   dragStart: [site: Site]
   dragEnd: [site: Site]
+  enterEditMode: []
 }>()
 
 const isDragging = ref(false)
 const iconLoadFailed = ref(false)
 const shortcutsStore = useShortcutsStore()
 const isShortcut = computed(() => shortcutsStore.isSiteShortcut(props.site))
+const isDraggable = computed(() => Boolean(props.canDrag || props.showActions))
 const shouldShowIconImage = computed(() => Boolean(props.site.icon && proxiedIconUrl.value && !iconLoadFailed.value))
 const brandIcon = computed(() => getBrandIcon(props.site))
 const defaultIconText = computed(() => {
@@ -192,7 +205,11 @@ function handleContentClick() {
 }
 
 function handleDragStart(e: DragEvent) {
-  if (!props.showActions) return
+  if (!isDraggable.value) return
+
+  if (!props.showActions) {
+    emit('enterEditMode')
+  }
 
   isDragging.value = true
   emit('dragStart', props.site)
@@ -254,6 +271,7 @@ function handleIconError() {
   opacity: 1;
 }
 
+.btn-move-corner,
 .btn-shortcut-corner,
 .btn-delete-corner {
   width: 20px;
@@ -266,6 +284,12 @@ function handleIconError() {
   background: rgba(0, 0, 0, 0.5);
   color: rgba(255, 255, 255, 0.7);
   border: none;
+}
+
+.btn-move-corner:hover {
+  background: color-mix(in srgb, var(--primary-color) 84%, #0f172a);
+  color: white;
+  transform: scale(1.1);
 }
 
 .btn-shortcut-corner.active {

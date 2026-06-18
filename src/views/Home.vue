@@ -119,6 +119,7 @@
         @edit="handleEdit"
         @delete="handleDelete"
         @toggle-edit-mode="editMode = !editMode"
+        @enter-edit-mode="editMode = true"
         @change-category="handleChangeCategory"
         @reorder-category="handleReorderCategory"
         @reorder-site="handleReorderSite"

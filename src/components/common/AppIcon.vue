@@ -21,6 +21,7 @@ const iconUrls = {
   filter: new URL('../../assets/icons/filter.svg', import.meta.url).href,
   grid: new URL('../../assets/icons/grid.svg', import.meta.url).href,
   minus: new URL('../../assets/icons/minus.svg', import.meta.url).href,
+  move: new URL('../../assets/icons/move.svg', import.meta.url).href,
   moreVertical: new URL('../../assets/icons/more-vertical.svg', import.meta.url).href,
   review: new URL('../../assets/icons/review.svg', import.meta.url).href,
   search: new URL('../../assets/icons/search.svg', import.meta.url).href,

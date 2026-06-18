@@ -31,7 +31,7 @@
               'drag-after': dropTargetIndex === index && draggingCategoryIndex !== null && draggingCategoryIndex < index,
               'sibling': isDraggingCategory && draggingCategoryIndex !== null && draggingCategoryIndex !== index
             }"
-            :draggable="showActions"
+            :draggable="canManage"
             @click="handleSelectCategory(item.category)"
             @dragstart="handleCategoryDragStart(index, $event)"
             @dragend="handleCategoryDragEnd"
@@ -106,6 +106,7 @@
           :key="site.id"
           :site="site"
           :show-actions="showActions"
+          :can-drag="canManage && !isSearching"
           :show-category-badge="Boolean(normalizedSearchQuery)"
           :class="{
             'site-drop-before': siteDropTargetIndex === index && draggingSiteIndex !== null && draggingSiteIndex > index,
@@ -113,6 +114,8 @@
           }"
           @edit="$emit('edit', site)"
           @delete="$emit('delete', site)"
+          @move="openMoveModal"
+          @enter-edit-mode="$emit('enterEditMode')"
           @drag-start="handleSiteDragStart"
           @drag-end="handleSiteDragEnd"
           @dragover.prevent="handleSiteDragOver(site, index, $event)"
@@ -148,6 +151,62 @@
         <div class="modal-actions">
           <button class="btn-cancel" type="button" @click="clearHiddenCategories">全部显示</button>
           <button class="btn-confirm" type="button" @click="showHiddenCategoryModal = false">完成</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showMoveModal" class="modal-overlay" @click="closeMoveModal">
+      <div class="modal-content move-site-modal" @click.stop>
+        <h3>移动到分类</h3>
+
+        <div v-if="movingSite" class="move-site-summary">
+          <span>站点</span>
+          <strong>{{ movingSite.name }}</strong>
+        </div>
+
+        <div class="category-combobox">
+          <input
+            ref="moveCategorySearchInput"
+            v-model="moveCategorySearch"
+            type="text"
+            placeholder="搜索分类"
+            autocomplete="off"
+          />
+
+          <div class="move-category-list" role="listbox">
+            <button
+              v-for="category in filteredMoveCategories"
+              :key="category.category"
+              type="button"
+              class="move-category-option"
+              :class="{
+                active: selectedMoveCategory === category.category,
+                current: movingSite?.category === category.category
+              }"
+              role="option"
+              :aria-selected="selectedMoveCategory === category.category"
+              @click="selectedMoveCategory = category.category"
+            >
+              <span class="radio-dot" aria-hidden="true"></span>
+              <span class="move-category-name">{{ category.category }}</span>
+              <small>{{ category.sites.length }}</small>
+            </button>
+            <div v-if="filteredMoveCategories.length === 0" class="move-category-empty">
+              没有匹配的分类
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-cancel" type="button" @click="closeMoveModal">取消</button>
+          <button
+            class="btn-confirm"
+            type="button"
+            :disabled="!canConfirmMove"
+            @click="confirmMoveSite"
+          >
+            确定
+          </button>
         </div>
       </div>
     </div>
@@ -206,6 +265,7 @@ const emit = defineEmits<{
   deleteCategory: [categoryId: number, categoryName: string]
   selectCategory: [category: string]
   toggleEditMode: []
+  enterEditMode: []
 }>()
 
 const LOCAL_HIDDEN_CATEGORY_KEY = 'navigation-hidden-categories'
@@ -216,9 +276,14 @@ const showCategoryModal = ref(false)
 const showHiddenCategoryModal = ref(false)
 const newCategoryName = ref('')
 const categoryInput = ref<HTMLInputElement>()
+const moveCategorySearchInput = ref<HTMLInputElement>()
 const categorySidebar = ref<HTMLElement>()
 const showCategoryScrollHint = ref(false)
 const hiddenCategoryNames = ref<Set<string>>(loadHiddenCategories())
+const showMoveModal = ref(false)
+const movingSite = ref<Site | null>(null)
+const moveCategorySearch = ref('')
+const selectedMoveCategory = ref('')
 
 // 当前选中的分类
 const currentCategory = ref(props.categories[0]?.category || '')
@@ -239,6 +304,7 @@ const siteDropTargetIndex = ref<number | null>(null)
 // 是否正在拖拽分类
 const isDraggingCategory = computed(() => draggingCategoryIndex.value !== null)
 const isDraggingSite = computed(() => draggingSiteId.value !== null && !isSearching.value)
+const canManage = computed(() => Boolean(props.canEdit || props.showActions))
 const draggingSiteIndex = computed(() => {
   if (draggingSiteId.value === null) return null
   const index = currentSites.value.findIndex((site) => site.id === draggingSiteId.value)
@@ -254,6 +320,16 @@ const visibleCategories = computed(() => {
 })
 const hiddenCount = computed(() => props.categories.length - visibleCategories.value.length)
 const showPanelAddSite = computed(() => Boolean(authStore.isAuthenticated && !isSearching.value && currentCategory.value))
+const filteredMoveCategories = computed(() => {
+  const keyword = moveCategorySearch.value.trim().toLowerCase()
+  if (!keyword) return props.categories
+
+  return props.categories.filter((category) => category.category.toLowerCase().includes(keyword))
+})
+const canConfirmMove = computed(() => {
+  if (!movingSite.value || !selectedMoveCategory.value) return false
+  return selectedMoveCategory.value !== movingSite.value.category
+})
 const panelTitle = computed(() => {
   if (isSearching.value) return '搜索结果'
   return currentCategory.value || '分类已屏蔽'
@@ -355,6 +431,31 @@ function handleAddSite() {
   emit('addSite', currentCategory.value)
 }
 
+function openMoveModal(site: Site) {
+  movingSite.value = site
+  selectedMoveCategory.value = site.category || ''
+  moveCategorySearch.value = ''
+  showMoveModal.value = true
+
+  nextTick(() => {
+    moveCategorySearchInput.value?.focus()
+  })
+}
+
+function closeMoveModal() {
+  showMoveModal.value = false
+  movingSite.value = null
+  selectedMoveCategory.value = ''
+  moveCategorySearch.value = ''
+}
+
+function confirmMoveSite() {
+  if (!movingSite.value || !canConfirmMove.value) return
+
+  emit('changeCategory', movingSite.value, selectedMoveCategory.value)
+  closeMoveModal()
+}
+
 watch([() => props.categories, visibleCategories], () => {
   const categoryNames = new Set(props.categories.map((category) => category.category))
   const nextHiddenCategories = new Set(
@@ -389,7 +490,11 @@ onBeforeUnmount(() => {
 
 // 拖拽分类开始
 function handleCategoryDragStart(index: number, e: DragEvent) {
-  if (!props.showActions) return
+  if (!canManage.value) return
+
+  if (!props.showActions) {
+    emit('enterEditMode')
+  }
 
   draggingCategoryIndex.value = index
   e.dataTransfer!.effectAllowed = 'move'
@@ -426,7 +531,12 @@ function handleDragOver(category: string, index: number, e: DragEvent) {
 }
 
 function handleSiteDragStart(site: Site) {
-  if (!props.showActions || isSearching.value || !site.id) return
+  if (!canManage.value || isSearching.value || !site.id) return
+
+  if (!props.showActions) {
+    emit('enterEditMode')
+  }
+
   draggingSiteId.value = site.id
   draggingSiteCategory.value = site.category || ''
 }
@@ -438,7 +548,7 @@ function handleSiteDragEnd() {
 }
 
 function handleSiteDragOver(site: Site, index: number, e: DragEvent) {
-  if (!props.showActions || isSearching.value || draggingSiteId.value === null) return
+  if (!canManage.value || isSearching.value || draggingSiteId.value === null) return
   if (draggingSiteCategory.value !== currentCategory.value || site.category !== currentCategory.value) return
 
   e.preventDefault()
@@ -462,7 +572,7 @@ function handleSiteDragLeave(e: DragEvent) {
 }
 
 function handleSiteDrop(toIndex: number, e: DragEvent) {
-  if (!props.showActions || isSearching.value || draggingSiteId.value === null) return
+  if (!canManage.value || isSearching.value || draggingSiteId.value === null) return
 
   e.preventDefault()
   const dataType = e.dataTransfer?.getData('text/plain')
@@ -1059,6 +1169,158 @@ function handleDeleteCategory(categoryId: number | undefined, categoryName: stri
   margin-bottom: var(--spacing-md);
 }
 
+.move-site-modal {
+  max-width: 460px;
+}
+
+.move-site-summary {
+  min-height: 42px;
+  margin-bottom: var(--spacing-md);
+  padding: 0 var(--spacing-md);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-md);
+  background: rgba(102, 126, 234, 0.08);
+  color: #1f2937;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.move-site-summary span {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.move-site-summary strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+
+.category-combobox {
+  margin-bottom: var(--spacing-lg);
+}
+
+.category-combobox input {
+  width: 100%;
+  height: 42px;
+  padding: 0 var(--spacing-md);
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  color: #111827;
+  background: white;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.category-combobox input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.14);
+}
+
+.move-category-list {
+  max-height: min(44vh, 320px);
+  margin-top: var(--spacing-sm);
+  padding: var(--spacing-xs);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.025);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.move-category-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.move-category-option {
+  width: 100%;
+  min-height: 42px;
+  padding: 0 var(--spacing-md);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: #1f2937;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--spacing-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.move-category-option:hover {
+  background: rgba(102, 126, 234, 0.08);
+}
+
+.move-category-option.active {
+  background: rgba(102, 126, 234, 0.14);
+  border-color: rgba(102, 126, 234, 0.36);
+}
+
+.move-category-option.current:not(.active) {
+  opacity: 0.72;
+}
+
+.radio-dot {
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  border: 2px solid rgba(107, 114, 128, 0.58);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.move-category-option.active .radio-dot {
+  border-color: var(--primary-color);
+}
+
+.move-category-option.active .radio-dot::after {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--primary-color);
+}
+
+.move-category-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.move-category-option small {
+  min-width: 28px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.08);
+  color: #4b5563;
+  text-align: center;
+}
+
+.move-category-empty {
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  font-size: 14px;
+}
+
 .visibility-list {
   max-height: min(48vh, 360px);
   margin-bottom: var(--spacing-lg);
@@ -1066,6 +1328,14 @@ function handleDeleteCategory(categoryId: number | undefined, categoryName: stri
   display: flex;
   flex-direction: column;
   gap: var(--spacing-xs);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.visibility-list::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 .visibility-item {
