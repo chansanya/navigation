@@ -25,6 +25,13 @@ npm run pages:dev
 
 ## 初始化数据库
 
+如果是第一次使用 Wrangler，或需要执行远程 D1 / Pages 操作，先登录 Cloudflare：
+
+```bash
+npx wrangler login
+npx wrangler whoami
+```
+
 ```bash
 npx wrangler d1 execute navigation_db --local --file=./db/schema.sql
 ```

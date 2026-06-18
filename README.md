@@ -28,13 +28,18 @@
 
 - [快速上手](docs/QUICKSTART.md)
 - [部署指南](docs/DEPLOY.md)
-- [项目总结](docs/PROJECT_SUMMARY.md)
-- [交付清单](docs/DELIVERY_CHECKLIST.md)
 
 ## 快速开始
 
 ```bash
 npm install
+```
+
+首次使用 Wrangler 或需要执行远程 D1/Pages 操作时，先登录 Cloudflare：
+
+```bash
+npx wrangler login
+npx wrangler whoami
 ```
 
 创建 D1 数据库：

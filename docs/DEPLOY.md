@@ -8,6 +8,15 @@
 npm install
 ```
 
+登录 Cloudflare 账号：
+
+```bash
+npx wrangler login
+npx wrangler whoami
+```
+
+创建远程 D1、执行远程 SQL、设置 Pages 环境变量和部署 Pages 都需要 Wrangler 已登录。
+
 本地环境变量写在项目根目录 `.dev.vars`，该文件不提交；示例见 `.dev.vars.example`。
 
 启动：
