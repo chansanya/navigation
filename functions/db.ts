@@ -141,7 +141,7 @@ interface Settings {
   siteLogo: string
   theme: 'glass' | 'cyberpunk'
   background: {
-    type: 'image' | 'particles'
+    type: 'image' | 'particles' | 'video'
     value: string
   }
   appearance: AppearanceConfig
@@ -252,9 +252,9 @@ function normalizeSiteLogo(value: unknown): string {
 }
 
 function normalizeBackground(value: any): Settings['background'] {
-  if (value?.type === 'image' && typeof value.value === 'string') {
+  if ((value?.type === 'image' || value?.type === 'video') && typeof value.value === 'string') {
     return {
-      type: 'image',
+      type: value.type,
       value: value.value
     }
   }

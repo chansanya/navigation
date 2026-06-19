@@ -114,6 +114,12 @@ function getPreviewStyle(preset: SettingsPreset) {
     }
   }
 
+  if (preset.background.type === 'video') {
+    return {
+      backgroundColor: '#111827'
+    }
+  }
+
   return {
     backgroundColor: '#0a0e27'
   }
@@ -121,7 +127,12 @@ function getPreviewStyle(preset: SettingsPreset) {
 
 function getPresetMeta(preset: SettingsPreset) {
   const themeLabel = preset.theme === 'cyberpunk' ? '赛博朋克' : '毛玻璃'
-  const backgroundLabel = preset.background.type === 'image' ? '图片' : '粒子'
+  const backgroundLabelMap = {
+    image: '图片',
+    particles: '粒子',
+    video: '视频'
+  } as const
+  const backgroundLabel = backgroundLabelMap[preset.background.type]
   return `${themeLabel} / ${backgroundLabel}`
 }
 </script>

@@ -6,8 +6,21 @@
       :style="{ backgroundImage: `url(${background.value})` }"
     ></div>
 
+    <video
+      v-else-if="background.type === 'video' && !videoLoadFailed"
+      :key="background.value"
+      class="bg-video"
+      :src="background.value"
+      autoplay
+      muted
+      loop
+      playsinline
+      preload="metadata"
+      @error="handleVideoError"
+    ></video>
+
     <div
-      v-else-if="background.type === 'particles'"
+      v-else-if="background.type === 'particles' || videoLoadFailed"
       id="particles-js"
       class="bg-particles"
     ></div>
@@ -15,11 +28,12 @@
 </template>
 
 <script setup lang="ts">
-import { computed, watch, onMounted, nextTick } from 'vue'
+import { computed, watch, onMounted, nextTick, ref } from 'vue'
 import { useSettingsStore } from '@/stores/settings'
 
 const settingsStore = useSettingsStore()
 const background = computed(() => settingsStore.background)
+const videoLoadFailed = ref(false)
 
 // 初始化粒子效果
 function initParticles() {
@@ -65,28 +79,46 @@ function initParticles() {
   })
 }
 
-// 监听背景类型变化
-watch(() => background.value.type, async (newType) => {
-  if (newType === 'particles') {
-    await nextTick()
+async function loadParticles() {
+  await nextTick()
 
-    // 动态加载 particles.js
-    if (!(window as any).particlesJS) {
-      const script = document.createElement('script')
-      script.src = 'https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js'
-      script.onload = () => initParticles()
-      document.head.appendChild(script)
-    } else {
-      initParticles()
-    }
+  if ((window as any).particlesJS) {
+    initParticles()
+    return
   }
-}, { immediate: true })
+
+  const existingScript = document.querySelector<HTMLScriptElement>('script[data-particles-js]')
+  if (existingScript) {
+    existingScript.addEventListener('load', () => initParticles(), { once: true })
+    return
+  }
+
+  const script = document.createElement('script')
+  script.src = 'https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js'
+  script.dataset.particlesJs = 'true'
+  script.onload = () => initParticles()
+  document.head.appendChild(script)
+}
+
+// 监听背景类型变化
+watch(() => background.value, async (newBackground) => {
+  videoLoadFailed.value = false
+
+  if (newBackground.type === 'particles') {
+    await loadParticles()
+  }
+}, { immediate: true, deep: true })
 
 onMounted(() => {
   if (background.value.type === 'particles') {
-    initParticles()
+    loadParticles()
   }
 })
+
+async function handleVideoError() {
+  videoLoadFailed.value = true
+  await loadParticles()
+}
 </script>
 
 <style scoped>
@@ -101,6 +133,7 @@ onMounted(() => {
 }
 
 .bg-image,
+.bg-video,
 .bg-particles {
   position: absolute;
   top: 0;
@@ -113,6 +146,12 @@ onMounted(() => {
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+}
+
+.bg-video {
+  object-fit: cover;
+  object-position: center;
+  background: #0a0e27;
 }
 
 .bg-particles {

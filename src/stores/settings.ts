@@ -5,7 +5,7 @@ import { useAuthStore } from './auth'
 export type ThemeType = 'glass' | 'cyberpunk'
 
 export interface BackgroundConfig {
-  type: 'image' | 'particles'
+  type: 'image' | 'particles' | 'video'
   value: string
 }
 
@@ -150,9 +150,9 @@ function normalizeSiteLogo(value: unknown): string {
 }
 
 function normalizeBackground(value: RawBackgroundConfig | undefined): BackgroundConfig {
-  if (value?.type === 'image' && typeof value.value === 'string') {
+  if ((value?.type === 'image' || value?.type === 'video') && typeof value.value === 'string') {
     return {
-      type: 'image',
+      type: value.type,
       value: value.value
     }
   }

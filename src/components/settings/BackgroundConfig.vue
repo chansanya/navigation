@@ -29,6 +29,20 @@
         </div>
       </div>
 
+      <!-- 视频背景 -->
+      <div v-if="activeTab === 'video'" class="config-video">
+        <input
+          v-model="videoUrl"
+          type="url"
+          class="media-input"
+          placeholder="输入 MP4 / WebM URL"
+          @change="handleVideoChange"
+        />
+        <div v-if="videoUrl" class="video-preview">
+          <video :src="videoUrl" muted loop playsinline controls @error="handleVideoError"></video>
+        </div>
+      </div>
+
       <!-- 粒子效果 -->
       <div v-if="activeTab === 'particles'" class="config-particles">
         <p class="particles-desc">启用动态粒子背景效果（科技感十足）</p>
@@ -44,23 +58,27 @@ import { useSettingsStore } from '@/stores/settings'
 
 const settingsStore = useSettingsStore()
 
-type TabType = 'image' | 'particles'
+type TabType = 'image' | 'particles' | 'video'
 
 const activeTab = ref<TabType>('particles')
 
 const tabs = [
   { value: 'image' as TabType, label: '图片' },
+  { value: 'video' as TabType, label: '视频' },
   { value: 'particles' as TabType, label: '粒子' }
 ]
 
 // 图片
 const imageUrl = ref('')
+const videoUrl = ref('')
 
 // 根据当前设置初始化值
 watch(() => settingsStore.background, (bg) => {
   activeTab.value = bg.type
   if (bg.type === 'image') {
     imageUrl.value = bg.value
+  } else if (bg.type === 'video') {
+    videoUrl.value = bg.value
   }
 }, { immediate: true })
 
@@ -78,8 +96,20 @@ function handleParticlesEnable() {
   })
 }
 
+function handleVideoChange() {
+  settingsStore.updateBackground({
+    type: 'video',
+    value: videoUrl.value
+  })
+}
+
 function handleImageError(e: Event) {
   const target = e.target as HTMLImageElement
+  target.style.display = 'none'
+}
+
+function handleVideoError(e: Event) {
+  const target = e.target as HTMLVideoElement
   target.style.display = 'none'
 }
 </script>
@@ -97,7 +127,7 @@ function handleImageError(e: Event) {
 
 .tabs {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--spacing-xs);
   margin-bottom: var(--spacing-md);
   background: rgba(0, 0, 0, 0.05);
@@ -123,7 +153,8 @@ function handleImageError(e: Event) {
 }
 
 /* 图片配置 */
-.image-input {
+.image-input,
+.media-input {
   width: 100%;
   padding: var(--spacing-sm);
   border: 1px solid rgba(0, 0, 0, 0.1);
@@ -143,6 +174,22 @@ function handleImageError(e: Event) {
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.video-preview {
+  width: 100%;
+  height: 150px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  background: #0a0e27;
+}
+
+.video-preview video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
 /* 粒子配置 */
