@@ -308,9 +308,6 @@ watch(() => formData.value.url, () => {
     clearTimeout(duplicateTimer)
   }
 
-  // 编辑模式：改的就是已存在站点，不做重复检测
-  if (isEdit.value) return
-
   if (!formData.value.url.trim()) return
 
   duplicateTimer = setTimeout(() => {
@@ -331,6 +328,12 @@ function duplicateText(source?: string | null) {
 }
 
 async function checkDuplicateUrl(force = false) {
+  // 编辑模式：改的就是已存在站点，统一跳过重复检测（覆盖 blur/watch/submit 所有触发点）
+  if (isEdit.value) {
+    duplicateMessage.value = ''
+    return false
+  }
+
   const url = normalizeSiteUrl(formData.value.url)
   if (!url) {
     duplicateMessage.value = ''
@@ -467,11 +470,8 @@ async function handleSubmit() {
     return
   }
 
-  // 仅新增时校验重复；编辑的是已存在站点，跳过
-  if (!isEdit.value) {
-    const duplicated = await checkDuplicateUrl(true)
-    if (duplicated) return
-  }
+  const duplicated = await checkDuplicateUrl(true)
+  if (duplicated) return
 
   emit('save', formData.value)
 }
