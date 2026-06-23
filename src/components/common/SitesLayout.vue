@@ -19,7 +19,7 @@
           </button>
         </div>
         <nav class="category-nav" :class="{ 'is-reordering': isDraggingCategory }">
-          <button
+          <div
             v-for="(item, index) in visibleCategories"
             :key="item.category"
             class="category-item"
@@ -38,18 +38,36 @@
             @dragover.prevent="handleDragOver(item.category, index, $event)"
             @dragleave="handleDragLeave($event)"
             @drop="handleDrop(item.category, index, $event)"
+            role="button"
+            tabindex="0"
+            @keydown.enter.prevent="handleSelectCategory(item.category)"
+            @keydown.space.prevent="handleSelectCategory(item.category)"
           >
             <span class="category-name">{{ item.category }}</span>
-            <span v-if="item.sites.length > 0" class="category-count">{{ item.sites.length }}</span>
-            <button
-              v-else-if="showActions"
-              class="btn-delete-category"
-              @click.stop="handleDeleteCategory(item.categoryId, item.category)"
-              title="删除分类"
-            >
-              <AppIcon name="trash" :size="14" />
-            </button>
-          </button>
+            <span v-if="!showActions && item.sites.length > 0" class="category-count">{{ item.sites.length }}</span>
+            <span v-else-if="showActions" class="category-actions">
+              <span v-if="item.sites.length > 0" class="category-count">{{ item.sites.length }}</span>
+              <button
+                class="btn-edit-category"
+                type="button"
+                @click.stop="handleEditCategory(item)"
+                title="编辑分类"
+                aria-label="编辑分类"
+              >
+                <AppIcon name="editMode" :size="14" />
+              </button>
+              <button
+                v-if="item.sites.length === 0"
+                class="btn-delete-category"
+                type="button"
+                @click.stop="handleDeleteCategory(item.categoryId, item.category)"
+                title="删除分类"
+                aria-label="删除分类"
+              >
+                <AppIcon name="trash" :size="14" />
+              </button>
+            </span>
+          </div>
           <div v-if="visibleCategories.length === 0" class="category-empty">
             <span>分类已全部屏蔽</span>
             <button type="button" @click="clearHiddenCategories">恢复显示</button>
@@ -212,20 +230,20 @@
     </div>
 
     <!-- 新增分类弹窗 -->
-    <div v-if="showCategoryModal" class="modal-overlay" @click="showCategoryModal = false">
+    <div v-if="showCategoryModal" class="modal-overlay" @click="closeCategoryModal">
       <div class="modal-content" @click.stop>
-        <h3>新增分类</h3>
+        <h3>{{ categoryModalTitle }}</h3>
         <input
           v-model="newCategoryName"
           type="text"
           placeholder="请输入分类名称"
           maxlength="20"
-          @keyup.enter="confirmAddCategory"
+          @keyup.enter="confirmCategoryModal"
           ref="categoryInput"
         />
         <div class="modal-actions">
-          <button class="btn-cancel" @click="showCategoryModal = false">取消</button>
-          <button class="btn-confirm" @click="confirmAddCategory" :disabled="!newCategoryName.trim()">确定</button>
+          <button class="btn-cancel" type="button" @click="closeCategoryModal">取消</button>
+          <button class="btn-confirm" type="button" @click="confirmCategoryModal" :disabled="!canConfirmCategoryModal">确定</button>
         </div>
       </div>
     </div>
@@ -261,6 +279,7 @@ const emit = defineEmits<{
   reorderCategory: [fromIndex: number, toIndex: number]
   reorderSite: [category: string, fromIndex: number, toIndex: number]
   addCategory: [name: string]
+  renameCategory: [categoryId: number, oldName: string, newName: string]
   addSite: [category: string]
   deleteCategory: [categoryId: number, categoryName: string]
   selectCategory: [category: string]
@@ -275,6 +294,7 @@ const authStore = useAuthStore()
 const showCategoryModal = ref(false)
 const showHiddenCategoryModal = ref(false)
 const newCategoryName = ref('')
+const editingCategory = ref<CategoryItem | null>(null)
 const categoryInput = ref<HTMLInputElement>()
 const moveCategorySearchInput = ref<HTMLInputElement>()
 const categorySidebar = ref<HTMLElement>()
@@ -329,6 +349,14 @@ const filteredMoveCategories = computed(() => {
 const canConfirmMove = computed(() => {
   if (!movingSite.value || !selectedMoveCategory.value) return false
   return selectedMoveCategory.value !== movingSite.value.category
+})
+const categoryModalTitle = computed(() => editingCategory.value ? '编辑分类' : '新增分类')
+const canConfirmCategoryModal = computed(() => {
+  const name = newCategoryName.value.trim()
+  if (!name) return false
+  if (!editingCategory.value) return true
+
+  return name !== editingCategory.value.category
 })
 const panelTitle = computed(() => {
   if (isSearching.value) return '搜索结果'
@@ -636,6 +664,7 @@ function handleDrop(category: string, toIndex: number, e: DragEvent) {
 // 新增分类
 function handleAddCategory() {
   showCategoryModal.value = true
+  editingCategory.value = null
   newCategoryName.value = ''
   // 下一帧聚焦输入框
   setTimeout(() => {
@@ -643,14 +672,40 @@ function handleAddCategory() {
   }, 100)
 }
 
-// 确认新增分类
-function confirmAddCategory() {
+function handleEditCategory(category: CategoryItem) {
+  if (!category.categoryId) return
+
+  editingCategory.value = category
+  newCategoryName.value = category.category
+  showCategoryModal.value = true
+  nextTick(() => {
+    categoryInput.value?.focus()
+    categoryInput.value?.select()
+  })
+}
+
+function closeCategoryModal() {
+  showCategoryModal.value = false
+  editingCategory.value = null
+  newCategoryName.value = ''
+}
+
+// 确认新增或编辑分类
+function confirmCategoryModal() {
   const name = newCategoryName.value.trim()
   if (!name) return
 
+  if (editingCategory.value?.categoryId) {
+    emit('renameCategory', editingCategory.value.categoryId, editingCategory.value.category, name)
+    if (currentCategory.value === editingCategory.value.category) {
+      currentCategory.value = name
+    }
+    closeCategoryModal()
+    return
+  }
+
   emit('addCategory', name)
-  showCategoryModal.value = false
-  newCategoryName.value = ''
+  closeCategoryModal()
 }
 
 // 删除分类
@@ -888,6 +943,10 @@ function handleDeleteCategory(categoryId: number | undefined, categoryName: stri
 }
 
 .category-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 15px;
   font-weight: var(--appearance-menu-font-weight);
 }
@@ -898,6 +957,7 @@ function handleDeleteCategory(categoryId: number | undefined, categoryName: stri
 }
 
 .category-count {
+  flex-shrink: 0;
   font-size: 13px;
   opacity: 0.7;
   font-weight: 500;
@@ -908,13 +968,24 @@ function handleDeleteCategory(categoryId: number | undefined, categoryName: stri
   text-align: center;
 }
 
+.category-actions {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--spacing-sm);
+}
+
 .category-item.active .category-count {
   background: rgba(255, 255, 255, 0.25);
   opacity: 1;
   color: white;
 }
 
+.btn-edit-category,
 .btn-delete-category {
+  width: 24px;
+  height: 24px;
   padding: 4px;
   border-radius: var(--radius-sm);
   display: flex;
@@ -923,6 +994,12 @@ function handleDeleteCategory(categoryId: number | undefined, categoryName: stri
   transition: all var(--transition-fast);
   color: rgba(255, 255, 255, 0.5);
   background: transparent;
+}
+
+.btn-edit-category:hover {
+  background: color-mix(in srgb, var(--primary-color) 20%, transparent);
+  color: var(--appearance-menu-text-color);
+  transform: scale(1.1);
 }
 
 .btn-delete-category:hover {

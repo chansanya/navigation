@@ -124,6 +124,7 @@
         @reorder-category="handleReorderCategory"
         @reorder-site="handleReorderSite"
         @add-category="handleAddCategory"
+        @rename-category="handleRenameCategory"
         @add-site="handleAddSite"
         @delete-category="handleDeleteCategory"
         @select-category="handleSelectCategory"
@@ -383,6 +384,16 @@ async function handleReorderSite(category: string, fromIndex: number, toIndex: n
 function handleAddCategory(name: string) {
   if (name && name.trim()) {
     sitesStore.createCategory(name.trim())
+  }
+}
+
+async function handleRenameCategory(categoryId: number, oldName: string, newName: string) {
+  const normalizedName = newName.trim()
+  if (!normalizedName || normalizedName === oldName) return
+
+  const success = await sitesStore.updateCategoryName(categoryId, normalizedName)
+  if (!success) {
+    alert(sitesStore.error || '分类更新失败')
   }
 }
 

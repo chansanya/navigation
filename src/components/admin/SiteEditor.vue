@@ -454,14 +454,15 @@ async function handleSubmit() {
   formData.value.icon = formData.value.icon?.trim() || ''
   formData.value.description = formData.value.description?.trim() || ''
 
-  // 验证必填字段
-  if (!formData.value.category) {
-    alert('请选择或添加一个分类')
+  // 先验证 name 和 url（更基础的必填项）
+  if (!formData.value.name || !formData.value.url) {
+    alert('请填写站点名称和 URL')
     return
   }
 
-  if (!formData.value.name || !formData.value.url) {
-    alert('请填写站点名称和 URL')
+  // 再验证分类
+  if (!formData.value.category) {
+    alert('请选择或添加一个分类')
     return
   }
 

@@ -160,6 +160,36 @@ export const useSitesStore = defineStore('sites', () => {
     }
   }
 
+  // 更新分类名称
+  async function updateCategoryName(categoryId: number, name: string): Promise<boolean> {
+    const privacyStore = usePrivacyStore()
+
+    try {
+      const response = await fetch(`/api/categories/${categoryId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...privacyStore.privacyHeaders()
+        },
+        body: JSON.stringify({ name })
+      })
+
+      const data = await response.json() as ApiResponse
+
+      if (data.success) {
+        await Promise.all([fetchCategories(), fetchSites()])
+        return true
+      }
+
+      error.value = data.error || '更新分类失败'
+      return false
+    } catch (err) {
+      error.value = '网络错误'
+      console.error('Failed to update category name:', err)
+      return false
+    }
+  }
+
   // 删除分类
   async function deleteCategory(categoryId: number): Promise<boolean> {
     const privacyStore = usePrivacyStore()
@@ -293,6 +323,7 @@ export const useSitesStore = defineStore('sites', () => {
     fetchCategories,
     createCategory,
     updateCategorySort,
+    updateCategoryName,
     deleteCategory,
     createSite,
     updateSite,

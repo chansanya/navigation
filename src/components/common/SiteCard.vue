@@ -263,12 +263,8 @@ function handleIconError() {
   z-index: 10;
   display: flex;
   gap: 5px;
-  opacity: 0;
-  transition: opacity var(--transition-fast);
-}
-
-.site-card:hover .card-actions-corner {
   opacity: 1;
+  transition: opacity var(--transition-fast);
 }
 
 .btn-move-corner,

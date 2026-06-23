@@ -17,28 +17,50 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
   try {
     const id = context.params.id as string
     const body = await context.request.json() as { name?: string; sort?: number }
+    const nextName = typeof body.name === 'string' ? body.name.trim() : undefined
 
-    if (!body.name && body.sort === undefined) {
+    if (!nextName && body.sort === undefined) {
       return Response.json({
         success: false,
         error: 'Missing name or sort'
       }, { status: 400 })
     }
 
-    if (isPrivateCategory(body.name) && !context.data.isPrivacyUnlocked) {
+    const existingCategory = await context.env.DB.prepare('SELECT name FROM categories WHERE id = ?').bind(id).first<{ name: string }>()
+    if (!existingCategory) {
+      return Response.json({
+        success: false,
+        error: 'Category not found'
+      }, { status: 404 })
+    }
+
+    if ((isPrivateCategory(existingCategory.name) || isPrivateCategory(nextName)) && !context.data.isPrivacyUnlocked) {
       return Response.json({
         success: false,
         error: 'Privacy mode required'
       }, { status: 403 })
     }
 
+    if (nextName && nextName !== existingCategory.name) {
+      const duplicate = await context.env.DB.prepare(
+        'SELECT id FROM categories WHERE name = ? AND id != ?'
+      ).bind(nextName, id).first()
+
+      if (duplicate) {
+        return Response.json({
+          success: false,
+          error: 'Category already exists'
+        }, { status: 400 })
+      }
+    }
+
     // 构建更新语句
     const updates: string[] = []
     const params: any[] = []
 
-    if (body.name) {
+    if (nextName) {
       updates.push('name = ?')
-      params.push(body.name)
+      params.push(nextName)
     }
 
     if (body.sort !== undefined) {
@@ -51,6 +73,12 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     await context.env.DB.prepare(
       `UPDATE categories SET ${updates.join(', ')} WHERE id = ?`
     ).bind(...params).run()
+
+    if (nextName && nextName !== existingCategory.name) {
+      await context.env.DB.prepare(
+        'UPDATE sites SET category = ? WHERE category = ?'
+      ).bind(nextName, existingCategory.name).run()
+    }
 
     return Response.json({
       success: true
