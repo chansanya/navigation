@@ -8,6 +8,7 @@ import {
   isPrivateCategory,
   isValidHttpUrl,
   normalizeUrlInput,
+  normalizeUrlForCompare,
   updateSite
 } from '../../db'
 
@@ -54,12 +55,16 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
         }, { status: 400 })
       }
 
-      const duplicated = await findSiteByUrl(context.env.DB, url, id)
-      if (duplicated) {
-        return Response.json({
-          success: false,
-          error: '该站点已存在，不能重复添加'
-        }, { status: 409 })
+      // URL 未变化时跳过查重：库里可能存在归一化相同的其它记录（如尾斜杠差异），
+      // 不应据此拦截对当前站点自身的编辑
+      if (normalizeUrlForCompare(url) !== normalizeUrlForCompare(existing.url)) {
+        const duplicated = await findSiteByUrl(context.env.DB, url, id)
+        if (duplicated) {
+          return Response.json({
+            success: false,
+            error: '该站点已存在，不能重复添加'
+          }, { status: 409 })
+        }
       }
 
       data.url = url
