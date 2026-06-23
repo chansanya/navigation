@@ -308,6 +308,9 @@ watch(() => formData.value.url, () => {
     clearTimeout(duplicateTimer)
   }
 
+  // 编辑模式：改的就是已存在站点，不做重复检测
+  if (isEdit.value) return
+
   if (!formData.value.url.trim()) return
 
   duplicateTimer = setTimeout(() => {
@@ -464,8 +467,11 @@ async function handleSubmit() {
     return
   }
 
-  const duplicated = await checkDuplicateUrl(true)
-  if (duplicated) return
+  // 仅新增时校验重复；编辑的是已存在站点，跳过
+  if (!isEdit.value) {
+    const duplicated = await checkDuplicateUrl(true)
+    if (duplicated) return
+  }
 
   emit('save', formData.value)
 }
