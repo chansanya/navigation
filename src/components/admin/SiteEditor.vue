@@ -380,9 +380,7 @@ async function handleExtract() {
     return
   }
 
-  const duplicated = await checkDuplicateUrl(true)
-  if (duplicated) return
-
+  // 注意：提取信息仅用于填充/更新，不阻断。重复 URL 由保存时的检测拦截。
   extracting.value = true
   extractError.value = ''
   extractSuccess.value = false
