@@ -93,12 +93,12 @@
           >
             <span class="shortcut-icon">
               <img
-                v-if="shortcut.icon && !isShortcutIconFailed(shortcut)"
-                :src="getShortcutIconUrl(shortcut.icon)"
+                v-if="isShortcutIconImage(shortcut.icon) && !isShortcutIconFailed(shortcut)"
+                :src="shortcut.icon || undefined"
                 :alt="shortcut.name"
                 @error="handleShortcutIconError(shortcut)"
               />
-              <span v-else>{{ getShortcutInitial(shortcut.name) }}</span>
+              <span v-else class="shortcut-icon-placeholder">{{ getShortcutIconFallbackText(shortcut) }}</span>
             </span>
             <span class="shortcut-name">{{ shortcut.name }}</span>
           </button>
@@ -277,16 +277,16 @@ function getShortcutInitial(name: string) {
   return name.trim().slice(0, 1).toUpperCase()
 }
 
-function getShortcutIconUrl(icon: string) {
-  if (icon.startsWith('/api/icon-proxy') || icon.includes('google.com/s2/favicons')) {
-    return icon
-  }
+function isShortcutIconImage(icon: string | null | undefined) {
+  if (!icon) return false
 
-  if (icon.startsWith('http://') || icon.startsWith('https://')) {
-    return `/api/icon-proxy?url=${encodeURIComponent(icon)}`
-  }
-
-  return icon
+  const trimmed = icon.trim()
+  if (!trimmed) return false
+  if (trimmed.length === 1) return false
+  if (trimmed.startsWith('/')) return true
+  if (trimmed.startsWith('data:image/')) return true
+  if (trimmed.includes('google.com/s2/favicons')) return true
+  return /^https?:\/\//i.test(trimmed)
 }
 
 function getShortcutIconKey(shortcut: { id?: number; url: string }) {
@@ -302,6 +302,15 @@ function handleShortcutIconError(shortcut: { id?: number; url: string }) {
     ...failedShortcutIconKeys.value,
     getShortcutIconKey(shortcut)
   ])
+}
+
+function getShortcutIconFallbackText(shortcut: { icon?: string | null; name: string }) {
+  const icon = (shortcut.icon || '').trim()
+  if (icon && icon.length <= 2 && !icon.includes('/') && !icon.includes(':')) {
+    return icon.toUpperCase()
+  }
+
+  return getShortcutInitial(shortcut.name)
 }
 
 function getFallbackShortcutIcon(url: string) {
@@ -686,6 +695,23 @@ function handleSubmitted() {
   object-fit: contain;
 }
 
+.shortcut-icon-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+  color: white;
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.6), transparent 30%),
+    linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+  box-shadow: 0 10px 24px rgba(102, 126, 234, 0.28);
+}
+
 .shortcut-add-icon {
   color: var(--primary-color);
 }
@@ -779,6 +805,12 @@ function handleSubmitted() {
   background: rgba(255, 255, 255, 0.18);
 }
 
+.theme-glass .shortcut-icon-placeholder {
+  background:
+    radial-gradient(circle at 28% 22%, rgba(255, 255, 255, 0.64), transparent 30%),
+    linear-gradient(135deg, rgba(96, 165, 250, 0.96), rgba(168, 85, 247, 0.94));
+}
+
 .theme-glass .shortcut-tile:hover,
 .theme-glass .shortcut-add-item:hover,
 .theme-glass .shortcut-tile:focus-visible,
@@ -794,6 +826,15 @@ function handleSubmitted() {
 .theme-cyberpunk .shortcut-icon {
   background: rgba(0, 255, 255, 0.12);
   box-shadow: inset 0 0 14px rgba(0, 255, 255, 0.12);
+}
+
+.theme-cyberpunk .shortcut-icon-placeholder {
+  background:
+    radial-gradient(circle at 28% 22%, rgba(0, 255, 255, 0.34), transparent 30%),
+    linear-gradient(135deg, #0a0e27, #2b1055 58%, #00ffff);
+  box-shadow:
+    0 0 18px rgba(0, 255, 255, 0.46),
+    inset 0 0 18px rgba(255, 0, 255, 0.16);
 }
 
 .theme-cyberpunk .shortcut-tile:hover,

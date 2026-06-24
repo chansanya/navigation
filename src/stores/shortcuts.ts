@@ -50,19 +50,15 @@ function normalizeShortcutIcon(icon: string | null | undefined) {
   const trimmedIcon = (icon || '').trim()
 
   if (!trimmedIcon) return null
-  if (trimmedIcon.startsWith('/api/icon-proxy')) return trimmedIcon
-  if (trimmedIcon.includes('google.com/s2/favicons')) return trimmedIcon
   if (trimmedIcon.startsWith('/') && !trimmedIcon.startsWith('//')) return trimmedIcon
   if (trimmedIcon.startsWith('data:image/')) return trimmedIcon
-  if (/^https?:\/\//i.test(trimmedIcon)) {
-    return `/api/icon-proxy?url=${encodeURIComponent(trimmedIcon)}`
-  }
+  if (/^https?:\/\//i.test(trimmedIcon)) return trimmedIcon
 
   return trimmedIcon
 }
 
 function getShortcutIcon(icon: string | null | undefined, fallbackUrl: string) {
-  return getGoogleFaviconUrl(fallbackUrl) || normalizeShortcutIcon(icon)
+  return normalizeShortcutIcon(icon) || getGoogleFaviconUrl(fallbackUrl)
 }
 
 export const useShortcutsStore = defineStore('shortcuts', () => {
