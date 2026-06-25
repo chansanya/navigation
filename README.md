@@ -80,8 +80,15 @@ npm run pages:deploy
 
 ```bash
 ./release.sh --init-db
+./release.sh --migrate
 ./release.sh --set-env
 ./release.sh --deploy
+```
+
+`--init-db` 用于首次初始化远程库；已有远程库升级新功能时，优先使用独立迁移脚本，例如：
+
+```bash
+./release.sh --migrate --migration db/migrations/20260625_add_password_vault_entries.sql
 ```
 
 完整发布：
@@ -129,6 +136,7 @@ npm run sync:local-db
 - `settings`：全局设置和预设
 - `shortcuts`：搜索主页快捷方式
 - `site_submissions`：公开投稿，审核通过后复制进 `sites`
+- `password_vault_entries`：密码本密文数据
 
 ## 使用说明
 
@@ -155,6 +163,7 @@ npm run sync:local-db
 - 输入 `PRIVATE_PASSWORD`
 - 解锁后会显示 `隐私空间` 分类和 `退出隐私模式`
 - 只有隐私模式下才能查看、添加、编辑、删除隐私空间站点
+- 管理认证且进入隐私模式后，可打开密码本；密码本只在浏览器端解密，D1 只保存密文
 
 ## API 概览
 
@@ -185,6 +194,10 @@ npm run sync:local-db
 - `GET /api/submissions`
 - `PUT /api/submissions/:id`
 - `GET /api/cloudflare/projects`
+- `GET /api/vault`
+- `POST /api/vault`
+- `PUT /api/vault/:id`
+- `DELETE /api/vault/:id`
 
 管理员登录和隐私模式都使用服务端签名的 `HttpOnly` Cookie，会话密钥不会写入 localStorage 或 sessionStorage。
 

@@ -66,6 +66,12 @@ npx wrangler d1 execute navigation_db --local --file=./db/schema.sql
 npx wrangler d1 execute navigation_db --remote --file=./db/schema.sql
 ```
 
+`db/schema.sql` 主要用于首次初始化。已有远程数据库升级新功能时，不要直接混跑整份初始化脚本，优先执行对应的独立迁移脚本：
+
+```bash
+npx wrangler d1 execute navigation_db --remote --file=./db/migrations/20260625_add_password_vault_entries.sql
+```
+
 当前 schema 包含：
 
 - `sites`
@@ -73,9 +79,11 @@ npx wrangler d1 execute navigation_db --remote --file=./db/schema.sql
 - `settings`
 - `shortcuts`
 - `site_submissions`
+- `password_vault_entries`
 
-运行时也会自动兜底创建 `shortcuts`、`site_submissions` 和 `隐私空间` 分类，但首次部署仍建议执行 `schema.sql`。
-重复 URL 检测在 API 层完成，不依赖额外唯一索引，因此已有数据库无需额外迁移。
+运行时也会自动兜底创建 `shortcuts`、`site_submissions`、`password_vault_entries` 和 `隐私空间` 分类，但首次部署仍建议执行 `schema.sql`。
+重复 URL 检测在 API 层完成，不依赖额外唯一索引。
+从密码本版本开始，新增数据库结构都应放在 `db/migrations/` 下单独建增量脚本，线上已有库按需执行对应迁移。
 
 ## Cloudflare Pages 部署
 
@@ -90,6 +98,7 @@ npm run pages:deploy
 
 ```bash
 ./release.sh --init-db   # 初始化远程数据库
+./release.sh --migrate   # 执行默认增量迁移脚本
 ./release.sh --set-env   # 从 .dev.vars 设置必要的 Pages 远程环境变量
 ./release.sh --deploy    # 构建并部署
 ```
@@ -98,6 +107,13 @@ npm run pages:deploy
 
 ```bash
 ./release.sh --all
+```
+
+`--all` 不会自动执行 `--migrate`。已有远程数据库升级时，先明确执行迁移，再部署：
+
+```bash
+./release.sh --migrate --migration db/migrations/20260625_add_password_vault_entries.sql
+./release.sh --deploy
 ```
 
 默认读取 `wrangler.toml` 中的 Pages 项目名和 D1 数据库名，也可通过参数覆盖：

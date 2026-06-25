@@ -42,6 +42,12 @@ npx wrangler d1 execute navigation_db --local --file=./db/schema.sql
 npx wrangler d1 execute navigation_db --remote --file=./db/schema.sql
 ```
 
+已有远程数据库升级新功能时，执行对应的独立迁移脚本，不需要重复跑整份初始化：
+
+```bash
+npx wrangler d1 execute navigation_db --remote --file=./db/migrations/20260625_add_password_vault_entries.sql
+```
+
 ## 常用功能
 
 ### 浏览站点
