@@ -13,8 +13,8 @@ const EXCLUDED_TABLE_PREFIXES = ['sqlite_', '_cf_']
 
 // 按外键关系排序。删除时先删子表，插入时先插父表。
 // shortcuts.site_id 依赖 sites.id，因此 shortcuts 删除要早于 sites，插入要晚于 sites。
-const DELETE_ORDER = ['shortcuts', 'site_submissions', 'sites', 'settings', 'categories']
-const INSERT_ORDER = ['categories', 'settings', 'sites', 'site_submissions', 'shortcuts']
+const DELETE_ORDER = ['password_vault_entries', 'shortcuts', 'site_submissions', 'sites', 'settings', 'categories']
+const INSERT_ORDER = ['categories', 'settings', 'sites', 'site_submissions', 'shortcuts', 'password_vault_entries']
 
 function printHelp() {
   console.log(`

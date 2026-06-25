@@ -6,8 +6,10 @@ PROJECT_NAME=""
 DB_NAME=""
 ENV_FILE=".dev.vars"
 SCHEMA_FILE="db/schema.sql"
+MIGRATION_FILE="db/migrations/20260625_add_password_vault_entries.sql"
 DIST_DIR="dist"
 RUN_INIT_DB=0
+RUN_MIGRATE_DB=0
 RUN_SET_ENV=0
 RUN_DEPLOY=0
 SKIP_CONFIRM=0
@@ -19,20 +21,23 @@ print_help() {
 
 动作:
   --init-db          初始化远程 D1 数据库，执行 db/schema.sql
+  --migrate          执行单独的远程 D1 增量迁移脚本
   --set-env          读取 .dev.vars 并设置必要的 Pages 远程环境变量
   --deploy           构建并部署到 Cloudflare Pages
-  --all              依次执行 --init-db、--set-env、--deploy
+  --all              依次执行 --init-db、--set-env、--deploy，不自动执行 --migrate
 
 参数:
   --project <name>   Pages 项目名，默认读取 wrangler.toml 的 name
   --db <name>        D1 数据库名，默认读取 wrangler.toml 的 database_name
   --env-file <path>  环境变量文件，默认 .dev.vars
   --schema <path>    数据库 schema 文件，默认 db/schema.sql
+  --migration <path> 增量迁移 SQL 文件，默认 db/migrations/20260625_add_password_vault_entries.sql
   --yes              跳过确认
   --help             显示帮助信息
 
 示例:
   ./release.sh --init-db
+  ./release.sh --migrate
   ./release.sh --set-env
   ./release.sh --deploy
   ./release.sh --all
@@ -48,6 +53,7 @@ read_toml_value() {
   local key="$1"
   local file="${2:-wrangler.toml}"
 
+  # 发布脚本默认从 wrangler.toml 读项目和数据库名，允许命令行参数覆盖。
   if [[ ! -f "${file}" ]]; then
     return 0
   fi
@@ -73,6 +79,7 @@ load_env_file() {
 
   local line key value
   while IFS= read -r line || [[ -n "${line}" ]]; do
+    # 只支持简单 KEY=VALUE 格式；复杂 shell 表达式不会被执行，避免误执行本地脚本。
     line="$(trim "${line}")"
     [[ -z "${line}" || "${line}" == \#* ]] && continue
     [[ "${line}" != *=* ]] && continue
@@ -102,6 +109,7 @@ set_pages_secret() {
     return
   fi
 
+  # 通过 stdin 传 secret，避免密钥出现在命令行参数或 shell 历史中。
   echo "设置远程环境变量: ${key}"
   printf '%s' "${value}" | npx wrangler pages secret put "${key}" --project-name "${PROJECT_NAME}"
 }
@@ -114,6 +122,9 @@ confirm_release() {
   echo "Pages 项目: ${PROJECT_NAME}"
   echo "D1 数据库: ${DB_NAME}"
   echo "环境变量文件: ${ENV_FILE}"
+  if [[ "${RUN_MIGRATE_DB}" -eq 1 ]]; then
+    echo "迁移脚本: ${MIGRATION_FILE}"
+  fi
   echo
   read -r -p "确认执行发布动作？输入 yes 继续: " confirm
   if [[ "${confirm}" != "yes" ]]; then
@@ -128,8 +139,20 @@ init_remote_db() {
     exit 1
   fi
 
+  # 初始化脚本用于全新数据库；已有线上库升级新功能时优先使用 migrate_remote_db。
   echo "初始化远程 D1 数据库: ${DB_NAME}"
   npx wrangler d1 execute "${DB_NAME}" --remote --file="${SCHEMA_FILE}"
+}
+
+migrate_remote_db() {
+  if [[ ! -f "${MIGRATION_FILE}" ]]; then
+    echo "数据库迁移文件不存在: ${MIGRATION_FILE}" >&2
+    exit 1
+  fi
+
+  # 增量迁移脚本必须独立、可重复执行，避免线上已有数据被初始化流程影响。
+  echo "执行远程 D1 增量迁移: ${MIGRATION_FILE}"
+  npx wrangler d1 execute "${DB_NAME}" --remote --file="${MIGRATION_FILE}"
 }
 
 set_remote_env() {
@@ -159,6 +182,10 @@ while [[ $# -gt 0 ]]; do
       RUN_INIT_DB=1
       shift
       ;;
+    --migrate)
+      RUN_MIGRATE_DB=1
+      shift
+      ;;
     --set-env)
       RUN_SET_ENV=1
       shift
@@ -168,6 +195,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --all)
+      # --all 面向首次发布或常规发布，不自动跑迁移，迁移必须显式声明。
       RUN_INIT_DB=1
       RUN_SET_ENV=1
       RUN_DEPLOY=1
@@ -189,6 +217,10 @@ while [[ $# -gt 0 ]]; do
       SCHEMA_FILE="${2:-}"
       shift 2
       ;;
+    --migration)
+      MIGRATION_FILE="${2:-}"
+      shift 2
+      ;;
     --yes|-y)
       SKIP_CONFIRM=1
       shift
@@ -205,7 +237,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ "${RUN_INIT_DB}" -eq 0 && "${RUN_SET_ENV}" -eq 0 && "${RUN_DEPLOY}" -eq 0 ]]; then
+if [[ "${RUN_INIT_DB}" -eq 0 && "${RUN_MIGRATE_DB}" -eq 0 && "${RUN_SET_ENV}" -eq 0 && "${RUN_DEPLOY}" -eq 0 ]]; then
   print_help
   exit 0
 fi
@@ -218,7 +250,7 @@ if [[ -z "${PROJECT_NAME}" ]]; then
   exit 1
 fi
 
-if [[ "${RUN_INIT_DB}" -eq 1 && -z "${DB_NAME}" ]]; then
+if [[ ("${RUN_INIT_DB}" -eq 1 || "${RUN_MIGRATE_DB}" -eq 1) && -z "${DB_NAME}" ]]; then
   echo "D1 数据库名不能为空，请使用 --db 指定" >&2
   exit 1
 fi
@@ -227,6 +259,10 @@ confirm_release
 
 if [[ "${RUN_INIT_DB}" -eq 1 ]]; then
   init_remote_db
+fi
+
+if [[ "${RUN_MIGRATE_DB}" -eq 1 ]]; then
+  migrate_remote_db
 fi
 
 if [[ "${RUN_SET_ENV}" -eq 1 ]]; then
