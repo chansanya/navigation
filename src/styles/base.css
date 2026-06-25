@@ -77,7 +77,10 @@ img {
 .visibility-list,
 .shortcut-dialog,
 .site-editor,
-.select-dropdown {
+.select-dropdown,
+.vault-dialog,
+.vault-list,
+.vault-detail {
   scrollbar-width: none !important;
   -ms-overflow-style: none !important;
 }
@@ -93,7 +96,10 @@ img {
 .visibility-list::-webkit-scrollbar,
 .shortcut-dialog::-webkit-scrollbar,
 .site-editor::-webkit-scrollbar,
-.select-dropdown::-webkit-scrollbar {
+.select-dropdown::-webkit-scrollbar,
+.vault-dialog::-webkit-scrollbar,
+.vault-list::-webkit-scrollbar,
+.vault-detail::-webkit-scrollbar {
   width: 0 !important;
   height: 0 !important;
   display: none !important;

@@ -47,6 +47,16 @@
       </div>
       <div class="header-actions">
         <button
+          v-if="authStore.isAuthenticated && privacyStore.isUnlocked"
+          type="button"
+          class="btn-admin btn-vault"
+          title="密码本"
+          aria-label="密码本"
+          @click="showVaultModal = true"
+        >
+          <AppIcon name="vault" />
+        </button>
+        <button
           v-if="authStore.isAuthenticated"
           type="button"
           class="btn-admin btn-review"
@@ -76,6 +86,7 @@
         >
           <AppIcon name="bookmarkImport" />
         </button>
+        <BookmarkExport />
         <button
           v-if="!authStore.isAuthenticated"
           type="button"
@@ -185,6 +196,11 @@
       @changed="refreshSiteData"
     />
 
+    <PasswordVault
+      v-if="showVaultModal && authStore.isAuthenticated && privacyStore.isUnlocked"
+      @close="showVaultModal = false"
+    />
+
     <!-- 设置面板 -->
     <transition name="slide">
       <div v-if="showSettings && authStore.isAuthenticated" class="settings-overlay" @click="showSettings = false">
@@ -213,6 +229,8 @@ import { computed, ref, onMounted, watch } from 'vue'
 import { useSitesStore } from '@/stores/sites'
 import { useSettingsStore } from '@/stores/settings'
 import { useAuthStore } from '@/stores/auth'
+import { usePrivacyStore } from '@/stores/privacy'
+import { useVaultStore } from '@/stores/vault'
 import type { Site } from '@/stores/sites'
 import SitesLayout from '@/components/common/SitesLayout.vue'
 import Loading from '@/components/common/Loading.vue'
@@ -227,11 +245,15 @@ import AdminLoginModal from '@/components/common/AdminLoginModal.vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import CloudflareImport from '@/components/admin/CloudflareImport.vue'
 import BookmarkImport from '@/components/admin/BookmarkImport.vue'
+import BookmarkExport from '@/components/admin/BookmarkExport.vue'
 import SubmissionReviewModal from '@/components/admin/SubmissionReviewModal.vue'
+import PasswordVault from '@/components/admin/PasswordVault.vue'
 
 const sitesStore = useSitesStore()
 const settingsStore = useSettingsStore()
 const authStore = useAuthStore()
+const privacyStore = usePrivacyStore()
+const vaultStore = useVaultStore()
 const showSettings = ref(false)
 const showSubmissionModal = ref(false)
 const showAdminLogin = ref(false)
@@ -239,6 +261,7 @@ const showEditor = ref(false)
 const showImportModal = ref(false)
 const showBookmarkImportModal = ref(false)
 const showReviewModal = ref(false)
+const showVaultModal = ref(false)
 const editMode = ref(false)
 const editingSite = ref<Site | null>(null)
 const selectedCategory = ref('')
@@ -254,8 +277,19 @@ onMounted(() => {
 
 watch(() => authStore.isAuthenticated, (isAuthenticated) => {
   if (!isAuthenticated) {
+    // 认证失效后立即关闭所有管理能力，避免 UI 残留可操作入口。
     showSettings.value = false
     editMode.value = false
+    showVaultModal.value = false
+    vaultStore.lock()
+  }
+})
+
+watch(() => privacyStore.isUnlocked, (isUnlocked) => {
+  if (!isUnlocked) {
+    // 退出隐私模式时同步锁定密码本，清掉内存中的明文数据。
+    showVaultModal.value = false
+    vaultStore.lock()
   }
 })
 
@@ -264,6 +298,7 @@ watch(normalizedSiteLogo, () => {
 })
 
 function refreshSiteData() {
+  // 分类和站点分开请求；隐私模式切换后两者都可能变化。
   sitesStore.fetchCategories()
   sitesStore.fetchSites()
 }
@@ -283,6 +318,7 @@ function handleAuthEntry() {
     return
   }
 
+  // 管理入口使用弹窗认证，不离开当前导航页面。
   showAdminLogin.value = true
 }
 
@@ -304,6 +340,7 @@ function handleEdit(site: Site) {
 
 function handleAddSite(category?: string) {
   if (category) {
+    // 从分类标题附近新增站点时，默认带入当前分类。
     selectedCategory.value = category
   }
   editingSite.value = null
@@ -339,6 +376,7 @@ function closeEditor() {
 }
 
 async function handleChangeCategory(site: Site, newCategory: string) {
+  // 站点移动分类时保留原有字段，只替换 category。
   await sitesStore.updateSite(site.id!, {
     ...site,
     category: newCategory
@@ -355,6 +393,7 @@ async function handleReorderCategory(fromIndex: number, toIndex: number) {
   categories.splice(toIndex, 0, movedCategory)
 
   for (let i = 0; i < categories.length; i += 1) {
+    // sort 值按间隔递减，后续插入或拖动时仍有调整空间。
     const newSort = 100 - i * 10
     if (categories[i].id && categories[i].sort !== newSort) {
       await sitesStore.updateCategorySort(categories[i].id!, newSort)
@@ -374,6 +413,7 @@ async function handleReorderSite(category: string, fromIndex: number, toIndex: n
 
   for (let i = 0; i < sites.length; i += 1) {
     const site = sites[i]
+    // 站点排序使用较大的起始值，让卡片顺序始终由 sort DESC 决定。
     const newSort = 1000 - i * 10
     if (site.id && site.sort !== newSort) {
       await sitesStore.updateSite(site.id, { sort: newSort })
@@ -391,6 +431,7 @@ async function handleRenameCategory(categoryId: number, oldName: string, newName
   const normalizedName = newName.trim()
   if (!normalizedName || normalizedName === oldName) return
 
+  // 后端会同步更新 sites.category，前端只负责刷新错误反馈。
   const success = await sitesStore.updateCategoryName(categoryId, normalizedName)
   if (!success) {
     alert(sitesStore.error || '分类更新失败')
@@ -407,6 +448,7 @@ function normalizeLogoUrl(url: string) {
   const trimmedUrl = url.trim().slice(0, 500)
 
   if (!trimmedUrl) return ''
+  // 首页 logo 只接受站内资源或 http(s) 图片，避免无效协议污染 img src。
   if (trimmedUrl.startsWith('/') && !trimmedUrl.startsWith('//')) return trimmedUrl
   if (/^https?:\/\//i.test(trimmedUrl)) return trimmedUrl
 

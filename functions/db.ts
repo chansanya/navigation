@@ -1,4 +1,5 @@
 // D1 数据库工具函数
+// 这一层集中封装数据库读写、运行时建表兜底和数据归一化，避免 API 文件直接散落 SQL 细节。
 
 interface Site {
   id?: number
@@ -37,6 +38,15 @@ interface Shortcut {
   updated_at?: string
 }
 
+interface VaultEntry {
+  id?: number
+  salt: string
+  iv: string
+  ciphertext: string
+  created_at?: string
+  updated_at?: string
+}
+
 export const PRIVATE_CATEGORY_NAME = '隐私空间'
 
 export function isPrivateCategory(category?: string | null) {
@@ -50,6 +60,7 @@ export function normalizeUrlInput(value: unknown) {
   if (!trimmed) return ''
   if (/^https?:\/\//i.test(trimmed)) return trimmed
 
+  // 用户经常只输入域名；统一补全协议后，后续 URL 校验和查重才能复用同一套逻辑。
   return `https://${trimmed}`
 }
 
@@ -75,6 +86,7 @@ export function normalizeUrlForCompare(value: unknown) {
       url.port = ''
     }
 
+    // 查重时忽略尾部斜杠和 hash，避免同一个站点因为展示写法不同被重复录入。
     url.pathname = url.pathname.replace(/\/+$/, '') || '/'
 
     return url.toString().replace(/\/(?=\?|$)/, '')
@@ -87,6 +99,7 @@ export async function findSiteByUrl(db: D1Database, url: string, excludeId?: num
   const normalizedUrl = normalizeUrlForCompare(url)
   if (!normalizedUrl) return null
 
+  // D1/SQLite 里无法直接表达这里的完整 URL 归一化规则，先取必要字段再在 JS 层比较。
   const { results } = await db.prepare('SELECT id, name, url FROM sites').all()
   const site = (results as unknown as Site[]).find((item) => {
     if (excludeId && item.id === excludeId) return false
@@ -114,6 +127,7 @@ export async function findPendingSubmissionByUrl(db: D1Database, url: string, ex
 }
 
 async function ensureSubmissionsTable(db: D1Database) {
+  // 投稿表是后续新增功能，运行时兜底建表让旧数据库部署后也能平滑使用。
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS site_submissions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -133,6 +147,7 @@ async function ensureSubmissionsTable(db: D1Database) {
 }
 
 export async function ensurePrivateCategory(db: D1Database) {
+  // 隐私空间是系统保留分类；不存在时补齐，存在时保持原记录不变。
   await db.prepare('INSERT OR IGNORE INTO categories (name, sort) VALUES (?, -100)').bind(PRIVATE_CATEGORY_NAME).run()
 }
 
@@ -209,6 +224,7 @@ const defaultSettings: Settings = {
 }
 
 async function ensureShortcutsTable(db: D1Database) {
+  // 快捷方式属于搜索页增强功能，使用独立表便于跨设备同步。
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS shortcuts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -224,6 +240,58 @@ async function ensureShortcutsTable(db: D1Database) {
   `).run()
   await db.prepare('CREATE INDEX IF NOT EXISTS idx_shortcuts_sort ON shortcuts(sort DESC, id ASC)').run()
   await db.prepare('CREATE INDEX IF NOT EXISTS idx_shortcuts_site_id ON shortcuts(site_id)').run()
+}
+
+export async function ensureVaultTable(db: D1Database) {
+  // 密码本只保存浏览器端加密后的密文材料，服务端不接触明文账号或密码。
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS password_vault_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      salt TEXT NOT NULL,
+      iv TEXT NOT NULL,
+      ciphertext TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run()
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_password_vault_entries_updated ON password_vault_entries(updated_at DESC, id DESC)').run()
+}
+
+export async function getVaultEntries(db: D1Database) {
+  await ensureVaultTable(db)
+  const { results } = await db.prepare(
+    'SELECT * FROM password_vault_entries ORDER BY updated_at DESC, id DESC'
+  ).all()
+  return results as unknown as VaultEntry[]
+}
+
+export async function getVaultEntryById(db: D1Database, id: number) {
+  await ensureVaultTable(db)
+  const result = await db.prepare('SELECT * FROM password_vault_entries WHERE id = ?').bind(id).first()
+  return result as unknown as VaultEntry | null
+}
+
+export async function createVaultEntry(db: D1Database, data: VaultEntry) {
+  await ensureVaultTable(db)
+  // salt、iv、ciphertext 都由前端 WebCrypto 生成；这里仅做密文持久化。
+  const result = await db.prepare(
+    'INSERT INTO password_vault_entries (salt, iv, ciphertext) VALUES (?, ?, ?) RETURNING *'
+  ).bind(data.salt, data.iv, data.ciphertext).first()
+  return result as unknown as VaultEntry
+}
+
+export async function updateVaultEntry(db: D1Database, id: number, data: VaultEntry) {
+  await ensureVaultTable(db)
+  const result = await db.prepare(
+    'UPDATE password_vault_entries SET salt = ?, iv = ?, ciphertext = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING *'
+  ).bind(data.salt, data.iv, data.ciphertext, id).first()
+  return result as unknown as VaultEntry | null
+}
+
+export async function deleteVaultEntry(db: D1Database, id: number) {
+  await ensureVaultTable(db)
+  await db.prepare('DELETE FROM password_vault_entries WHERE id = ?').bind(id).run()
+  return true
 }
 
 function normalizeTheme(value: unknown): Settings['theme'] {
@@ -280,6 +348,7 @@ function normalizeFontWeight(value: unknown, fallback: number): number {
 
 function normalizeAppearance(value: any): Settings['appearance'] {
   if (value?.mode === 'readable') {
+    // 兼容旧版“可读模式”配置，将其转换为当前可调外观字段。
     return {
       topbarBgColor: '#0f172a',
       topbarTextColor: '#ffffff',
@@ -355,6 +424,7 @@ export async function getSites(db: D1Database, category?: string, includePrivate
   }
 
   if (!includePrivate) {
+    // 默认公开接口不返回隐私空间内容，只有隐私模式解锁后才包含。
     conditions.push('(category IS NULL OR category != ?)')
     params.push(PRIVATE_CATEGORY_NAME)
   }
@@ -385,6 +455,7 @@ export async function createSite(db: D1Database, data: Site) {
 
 export async function updateSite(db: D1Database, id: number, data: Partial<Site>) {
   await ensurePrivateCategory(db)
+  // 只更新调用方传入的字段，避免部分编辑时把未提交字段覆盖为空。
   const fields: string[] = []
   const values: any[] = []
 
@@ -459,6 +530,7 @@ export async function updateSubmissionStatus(db: D1Database, id: number, status:
 
 export async function getShortcuts(db: D1Database, includePrivate = false) {
   await ensureShortcutsTable(db)
+  // 通过 LEFT JOIN 识别快捷方式关联站点是否属于隐私空间，公开状态下需要过滤。
   const query = includePrivate
     ? 'SELECT shortcuts.* FROM shortcuts LEFT JOIN sites ON sites.id = shortcuts.site_id ORDER BY shortcuts.sort DESC, shortcuts.id ASC'
     : 'SELECT shortcuts.* FROM shortcuts LEFT JOIN sites ON sites.id = shortcuts.site_id WHERE sites.category IS NULL OR sites.category != ? ORDER BY shortcuts.sort DESC, shortcuts.id ASC'
@@ -484,6 +556,7 @@ export async function getShortcutByUrl(db: D1Database, url: string) {
 export async function createShortcut(db: D1Database, data: Shortcut) {
   await ensureShortcutsTable(db)
   const existing = await getShortcutByUrl(db, data.url)
+  // 快捷方式按 URL 保持唯一；重复添加时返回已有记录，方便前端幂等切换。
   if (existing) return existing
 
   const { site_id, name, url, icon, sort } = data
@@ -547,6 +620,7 @@ export async function getSettings(db: D1Database): Promise<Settings> {
 
   for (const row of results as any[]) {
     try {
+      // settings.value 统一以 JSON 字符串存储，旧数据若是普通字符串也继续兼容。
       settings[row.key] = JSON.parse(row.value)
     } catch {
       settings[row.key] = row.value
