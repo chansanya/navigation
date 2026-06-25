@@ -37,6 +37,7 @@ const videoLoadFailed = ref(false)
 
 // 初始化粒子效果
 function initParticles() {
+  // particles.js 是外部全局脚本，未加载或 SSR 环境下直接跳过。
   if (typeof window === 'undefined' || !(window as any).particlesJS) return
 
   (window as any).particlesJS('particles-js', {
@@ -83,12 +84,14 @@ async function loadParticles() {
   await nextTick()
 
   if ((window as any).particlesJS) {
+    // 背景切换回来时复用已经加载的脚本，不重复插入 script。
     initParticles()
     return
   }
 
   const existingScript = document.querySelector<HTMLScriptElement>('script[data-particles-js]')
   if (existingScript) {
+    // 多个组件生命周期同时触发时，等待同一个脚本加载完成即可。
     existingScript.addEventListener('load', () => initParticles(), { once: true })
     return
   }
@@ -102,6 +105,7 @@ async function loadParticles() {
 
 // 监听背景类型变化
 watch(() => background.value, async (newBackground) => {
+  // 每次背景配置变化都重置视频失败状态，允许用户换新视频地址后重新尝试。
   videoLoadFailed.value = false
 
   if (newBackground.type === 'particles') {
@@ -116,6 +120,7 @@ onMounted(() => {
 })
 
 async function handleVideoError() {
+  // 动态壁纸加载失败时降级到粒子背景，避免页面出现空白背景。
   videoLoadFailed.value = true
   await loadParticles()
 }

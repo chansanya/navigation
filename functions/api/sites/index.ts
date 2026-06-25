@@ -16,7 +16,7 @@ interface Env {
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
-    // 调试：检查 DB 是否存在
+    // D1 绑定缺失时直接返回明确错误，便于部署后快速定位 wrangler/pages 配置问题。
     if (!context.env.DB) {
       return Response.json({
         success: false,
@@ -27,6 +27,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     const url = new URL(context.request.url)
     const category = url.searchParams.get('category') || undefined
 
+    // getSites 会根据隐私模式自动过滤隐私空间站点。
     const sites = await getSites(context.env.DB, category, Boolean(context.data.isPrivacyUnlocked))
 
     return Response.json({
@@ -42,7 +43,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
-  // 检查认证
+  // 新增站点会写入公共数据，必须先通过管理员认证。
   if (!context.data.isAuthenticated) {
     return Response.json({
       success: false,
@@ -55,7 +56,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const name = typeof data.name === 'string' ? data.name.trim() : ''
     const url = normalizeUrlInput(data.url)
 
-    // 验证必填字段
+    // 名称和 URL 在服务端再次校验，防止绕过前端表单直接提交脏数据。
     if (!name || !url) {
       return Response.json({
         success: false,
@@ -70,6 +71,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }, { status: 400 })
     }
 
+    // 新建到隐私空间时必须先解锁隐私模式。
     if (isPrivateCategory(data.category) && !context.data.isPrivacyUnlocked) {
       return Response.json({
         success: false,
@@ -77,6 +79,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }, { status: 403 })
     }
 
+    // 创建时做 URL 归一化查重，避免尾斜杠或大小写造成重复站点。
     const existing = await findSiteByUrl(context.env.DB, url)
     if (existing) {
       return Response.json({

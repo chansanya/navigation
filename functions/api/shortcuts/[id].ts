@@ -12,6 +12,7 @@ function normalizeUrl(value: unknown) {
 
   const trimmed = value.trim()
   if (!trimmed) return ''
+  // 保持和创建接口一致：快捷方式可指向站内相对路径、锚点或 http(s) URL。
   if (trimmed.startsWith('/') || trimmed.startsWith('#')) return trimmed
   if (/^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed)) return trimmed
 
@@ -55,6 +56,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     }
 
     if (existing.site_id) {
+      // 已关联隐私站点的快捷方式，在未解锁隐私模式时不允许编辑。
       const site = await getSiteById(context.env.DB, existing.site_id)
       if (isPrivateCategory(site?.category) && !context.data.isPrivacyUnlocked) {
         return Response.json({
@@ -127,6 +129,7 @@ export const onRequestDelete: PagesFunction<Env> = async (context) => {
     }
 
     if (existing.site_id) {
+      // 删除隐私快捷方式也要求隐私模式，和站点删除权限保持一致。
       const site = await getSiteById(context.env.DB, existing.site_id)
       if (isPrivateCategory(site?.category) && !context.data.isPrivacyUnlocked) {
         return Response.json({

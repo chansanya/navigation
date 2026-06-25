@@ -8,6 +8,7 @@ interface Env {
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
+    // 未解锁隐私模式时，getCategories 会过滤系统保留的隐私空间分类。
     const categories = await getCategories(context.env.DB, Boolean(context.data.isPrivacyUnlocked))
 
     return Response.json({
@@ -41,6 +42,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }, { status: 400 })
     }
 
+    // 只有隐私模式下才能显式创建或恢复隐私空间分类。
     if (isPrivateCategory(body.name) && !context.data.isPrivacyUnlocked) {
       return Response.json({
         success: false,
@@ -61,6 +63,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     }
 
     // 获取最大 sort 值
+    // 新分类排在当前分类列表前面，后续拖动排序会重新写入 sort。
     const maxSort = await context.env.DB.prepare(
       'SELECT MAX(sort) as max_sort FROM categories'
     ).first()

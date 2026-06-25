@@ -28,6 +28,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   context.data.adminToken = env.ADMIN_TOKEN || ''
   context.data.privatePassword = env.PRIVATE_PASSWORD || ''
 
+  // 所有 API 统一在中间件验签，具体接口只读取布尔状态决定权限。
   context.data.isAuthenticated = await verifySignedSessionCookie(request, env.ADMIN_TOKEN || '', ADMIN_SESSION_COOKIE)
 
   context.data.isPrivacyUnlocked = await verifySignedSessionCookie(request, env.PRIVATE_PASSWORD || '', PRIVACY_SESSION_COOKIE)
@@ -36,6 +37,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const response = await context.next()
 
   // 添加 CORS 头
+  // Pages Functions 返回的 Response headers 不可直接改，复制一份再重建响应。
   const newHeaders = new Headers(response.headers)
   newHeaders.set('Access-Control-Allow-Origin', '*')
   newHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')

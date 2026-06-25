@@ -43,6 +43,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     const action = data.action === 'reject' ? 'reject' : 'approve'
 
     if (action === 'reject') {
+      // 拒绝只更新投稿状态，不创建正式站点。
       const updated = await updateSubmissionStatus(context.env.DB, id, 'rejected', data.review_note)
       return Response.json({
         success: true,
@@ -54,6 +55,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
       ? data.category.trim()
       : submission.category || '其他'
 
+    // 审核时收录到隐私空间需要额外解锁，避免误把公开投稿放入私密分类。
     if (isPrivateCategory(category) && !context.data.isPrivacyUnlocked) {
       return Response.json({
         success: false,
@@ -72,6 +74,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
       }, { status: 400 })
     }
 
+    // 审核通过前再次查重，防止投稿等待期间站点已被其他方式添加。
     const existing = await findSiteByUrl(context.env.DB, siteUrl)
     if (existing) {
       return Response.json({
@@ -80,6 +83,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
       }, { status: 409 })
     }
 
+    // 审核通过会复制一份到正式站点表，投稿表保留审核记录和备注。
     const site = await createSite(context.env.DB, {
       name: typeof data.name === 'string' && data.name.trim() ? data.name.trim() : submission.name,
       url: siteUrl,

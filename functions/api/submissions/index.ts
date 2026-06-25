@@ -16,6 +16,7 @@ interface Env {
 }
 
 function isValidEmail(value: string) {
+  // 投稿只需要基础邮箱格式校验，用于后续人工联系，不做复杂 MX 检查。
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
 }
 
@@ -73,6 +74,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }, { status: 400 })
     }
 
+    // 公开投稿先检查正式站点，避免把已收录站点再次放进审核队列。
     const existing = await findSiteByUrl(context.env.DB, url)
     if (existing) {
       return Response.json({
@@ -81,6 +83,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       }, { status: 409 })
     }
 
+    // 再检查待审核投稿，避免重复提交造成审核噪音。
     const pending = await findPendingSubmissionByUrl(context.env.DB, url)
     if (pending) {
       return Response.json({
@@ -93,6 +96,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       name,
       url,
       email,
+      // 公开投稿不能直接进入隐私空间，管理员审核时再决定是否收录到隐私分类。
       category: isPrivateCategory(category) ? '其他' : category,
       icon: typeof data.icon === 'string' ? data.icon.trim() : null,
       description: typeof data.description === 'string' ? data.description.trim() : null

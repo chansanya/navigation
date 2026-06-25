@@ -34,11 +34,13 @@ function normalizeUrl(value: string) {
   if (trimmed.startsWith('/') || trimmed.startsWith('#')) return trimmed
   if (/^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed)) return trimmed
 
+  // 用户手工添加快捷方式时允许省略协议，保存前补成可打开 URL。
   return `https://${trimmed}`
 }
 
 function getGoogleFaviconUrl(url: string) {
   try {
+    // 当站点没有可靠 icon 时，使用 Google favicon 作为跨设备可访问的轻量兜底。
     const hostname = new URL(normalizeUrl(url)).hostname
     return hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=128` : ''
   } catch {
@@ -50,6 +52,7 @@ function normalizeShortcutIcon(icon: string | null | undefined) {
   const trimmedIcon = (icon || '').trim()
 
   if (!trimmedIcon) return null
+  // 保留原始可访问图标地址，不再转成代理地址，避免快捷方式跨设备显示不一致。
   if (trimmedIcon.startsWith('/') && !trimmedIcon.startsWith('//')) return trimmedIcon
   if (trimmedIcon.startsWith('data:image/')) return trimmedIcon
   if (/^https?:\/\//i.test(trimmedIcon)) return trimmedIcon
@@ -68,6 +71,7 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
 
   const shortcutUrls = computed(() => new Set(shortcuts.value.map((shortcut) => normalizeUrl(shortcut.url))))
   const shortcutSiteIds = computed(() => {
+    // 同时按 site_id 和 URL 判断收藏态，兼容手工快捷方式和站点卡片快捷方式。
     return new Set(shortcuts.value
       .map((shortcut) => shortcut.site_id)
       .filter((siteId): siteId is number => typeof siteId === 'number'))
@@ -180,6 +184,7 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
   }
 
   function isSiteShortcut(site: Site) {
+    // 卡片星标需要即时判断当前站点是否已存在快捷方式。
     if (site.id && shortcutSiteIds.value.has(site.id)) return true
     return shortcutUrls.value.has(normalizeUrl(site.url))
   }
@@ -198,6 +203,7 @@ export const useShortcutsStore = defineStore('shortcuts', () => {
       return deleteShortcut(existing.id)
     }
 
+    // 从站点卡片添加快捷方式时缓存一个可用图标，快捷方式页面仍有加载失败兜底。
     return createShortcut({
       site_id: site.id || null,
       name: site.name,

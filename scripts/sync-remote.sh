@@ -61,6 +61,7 @@ if [[ -z "${DB_NAME}" ]]; then
 fi
 
 if [[ "${SQL_FILE}" != /* ]]; then
+  # 允许调用方传相对路径，但执行前统一转成仓库根目录下的绝对路径。
   SQL_FILE="${REPO_ROOT}/${SQL_FILE}"
 fi
 
@@ -71,6 +72,7 @@ if [[ ! -f "${SQL_FILE}" ]]; then
 fi
 
 if grep -Eiq '^[[:space:]]*(BEGIN([[:space:]]+TRANSACTION)?|COMMIT|SAVEPOINT|ROLLBACK|PRAGMA)([[:space:];=]|$)' "${SQL_FILE}"; then
+  # Wrangler D1 远程执行不接受显式事务语句，导出脚本应提前剔除。
   echo "SQL 文件包含 D1 远程不支持的事务或外键开关语句: ${SQL_FILE}" >&2
   echo "请重新运行: npm run export:local-db" >&2
   exit 1
@@ -82,6 +84,7 @@ echo
 echo "注意: 该 SQL 可能会先删除远程表数据，再写入本地导出的数据。"
 
 if [[ "${SKIP_CONFIRM}" -ne 1 ]]; then
+  # 远程同步是覆盖型操作，默认要求人工输入 yes，降低误推本地数据的风险。
   read -r -p "确认同步到远程 D1？输入 yes 继续: " CONFIRM
   if [[ "${CONFIRM}" != "yes" ]]; then
     echo "已取消"

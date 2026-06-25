@@ -42,10 +42,12 @@ const error = ref('')
 const tokenInputEl = ref<HTMLInputElement | null>(null)
 
 onMounted(() => {
+  // 弹窗打开后自动聚焦，管理员可以直接输入令牌。
   nextTick(() => tokenInputEl.value?.focus())
 })
 
 function handleClose() {
+  // 验证请求进行中不允许关闭，避免用户误以为认证已经结束。
   if (loading.value) return
   emit('close')
 }
@@ -57,6 +59,7 @@ async function handleLogin() {
   loading.value = true
   error.value = ''
 
+  // 实际令牌校验由服务端完成，前端只根据返回结果切换 UI。
   const success = await authStore.verifyToken(token)
   loading.value = false
 

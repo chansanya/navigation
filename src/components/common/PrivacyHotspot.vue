@@ -53,6 +53,7 @@ let resetTimer: number | undefined
 
 async function handleClick() {
   if (privacyStore.isUnlocked) {
+    // 已解锁时按钮变成显式退出入口，点击后刷新站点/分类数据。
     privacyStore.lock()
     emit('changed')
     return
@@ -60,12 +61,14 @@ async function handleClick() {
 
   clickCount.value += 1
   window.clearTimeout(resetTimer)
+  // 隐藏入口需要在短时间内连续点击，避免普通点击标题区域误触发。
   resetTimer = window.setTimeout(() => {
     clickCount.value = 0
   }, 1800)
 
   if (clickCount.value < 6) return
 
+  // 第 6 次点击才打开密码弹窗，打开后重置输入和错误状态。
   clickCount.value = 0
   showUnlockModal.value = true
   passwordInput.value = ''
@@ -88,6 +91,7 @@ async function submitPassword() {
   unlockLoading.value = true
   unlockError.value = ''
 
+  // 隐私密码校验成功后，父组件会重新拉取包含隐私空间的数据。
   const valid = await privacyStore.verifyPassword(password)
   unlockLoading.value = false
 

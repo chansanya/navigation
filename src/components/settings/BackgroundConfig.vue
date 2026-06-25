@@ -68,12 +68,12 @@ const tabs = [
   { value: 'particles' as TabType, label: '粒子' }
 ]
 
-// 图片
+// 输入框保留各自最近一次值，切换 tab 时不会立刻丢失管理员正在尝试的地址。
 const imageUrl = ref('')
 const videoUrl = ref('')
 
-// 根据当前设置初始化值
 watch(() => settingsStore.background, (bg) => {
+  // 外部应用预设或初始化设置后，同步选中的背景类型和对应输入框内容。
   activeTab.value = bg.type
   if (bg.type === 'image') {
     imageUrl.value = bg.value
@@ -83,6 +83,7 @@ watch(() => settingsStore.background, (bg) => {
 }, { immediate: true })
 
 function handleImageChange() {
+  // 图片/视频 URL 不在这里做强校验，实际能否展示由预览和 BackgroundLayer 的兜底共同处理。
   settingsStore.updateBackground({
     type: 'image',
     value: imageUrl.value
@@ -90,6 +91,7 @@ function handleImageChange() {
 }
 
 function handleParticlesEnable() {
+  // 粒子背景只需要类型开关，具体颜色和密度跟随当前主题渲染。
   settingsStore.updateBackground({
     type: 'particles',
     value: 'default'
@@ -97,6 +99,7 @@ function handleParticlesEnable() {
 }
 
 function handleVideoChange() {
+  // 动态壁纸保存为 video 类型，前台渲染会使用 muted/loop/playsinline 以适配浏览器自动播放限制。
   settingsStore.updateBackground({
     type: 'video',
     value: videoUrl.value
@@ -104,11 +107,13 @@ function handleVideoChange() {
 }
 
 function handleImageError(e: Event) {
+  // 预览失败只隐藏预览图，不清空配置，方便管理员继续修改 URL。
   const target = e.target as HTMLImageElement
   target.style.display = 'none'
 }
 
 function handleVideoError(e: Event) {
+  // 视频预览失败也保持输入值，避免一次不可达的资源把已输入地址直接抹掉。
   const target = e.target as HTMLVideoElement
   target.style.display = 'none'
 }

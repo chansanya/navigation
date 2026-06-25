@@ -93,6 +93,7 @@ const isDragging = ref(false)
 const iconLoadFailed = ref(false)
 const shortcutsStore = useShortcutsStore()
 const isShortcut = computed(() => shortcutsStore.isSiteShortcut(props.site))
+// 管理按钮展示时允许拖拽；未进入编辑模式时拖动卡片会自动触发编辑模式。
 const isDraggable = computed(() => Boolean(props.canDrag || props.showActions))
 const shouldShowIconImage = computed(() => Boolean(props.site.icon && proxiedIconUrl.value && !iconLoadFailed.value))
 const brandIcon = computed(() => getBrandIcon(props.site))
@@ -104,6 +105,7 @@ const defaultIconText = computed(() => {
 })
 
 const brandIcons = {
+  // 深色背景下部分 favicon 可读性差，常见品牌优先使用可按主题着色的单色 SVG。
   github: {
     id: 'github',
     title: 'GitHub',
@@ -129,6 +131,7 @@ function getHost(value: string | undefined) {
 }
 
 function getBrandIcon(site: Site) {
+  // 从名称、URL、图标 URL 中综合判断品牌，避免只依赖用户填写的标题。
   const haystack = [
     site.name,
     site.url,
@@ -169,6 +172,7 @@ const proxiedIconUrl = computed(() => {
 
   // 如果图标 URL 是外部链接，通过代理加载
   if (props.site.icon.startsWith('http://') || props.site.icon.startsWith('https://')) {
+    // 站点卡片仍使用代理，主要用于绕过部分站点 favicon 防盗链。
     return `/api/icon-proxy?url=${encodeURIComponent(props.site.icon)}`
   }
 
@@ -177,6 +181,7 @@ const proxiedIconUrl = computed(() => {
 })
 
 watch(() => props.site.icon, () => {
+  // 图标地址变化后重新尝试加载，避免旧失败状态让新图标直接显示占位。
   iconLoadFailed.value = false
 })
 
@@ -188,6 +193,7 @@ function handleIconClick() {
 }
 
 async function handleShortcutToggle() {
+  // 星标状态由快捷方式 store 统一维护，卡片只负责发起切换。
   await shortcutsStore.toggleSiteShortcut(props.site)
 }
 
@@ -208,6 +214,7 @@ function handleDragStart(e: DragEvent) {
   if (!isDraggable.value) return
 
   if (!props.showActions) {
+    // 管理员直接拖动卡片时自动进入编辑模式，减少一次显式切换。
     emit('enterEditMode')
   }
 

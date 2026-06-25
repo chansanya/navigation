@@ -15,6 +15,7 @@ interface ExtractedInfo {
  */
 async function validateIcon(iconUrl: string): Promise<boolean> {
   try {
+    // 先 HEAD 探测图标，避免把无法访问的 favicon 写入站点或投稿。
     const response = await fetch(iconUrl, {
       method: 'HEAD',
       headers: {
@@ -85,7 +86,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         info.description = descMatch[1].trim()
       }
 
-      // 提取 favicon - 收集所有候选
+      // 提取 favicon - 收集所有候选，按页面声明、默认 favicon、Google 兜底依次尝试。
       const iconCandidates: string[] = []
 
       // 1. link[rel="icon"]
@@ -126,6 +127,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     } catch (error) {
       // 抓取失败，返回基础信息
+      // 外部页面超时或拒绝访问时仍给前端一个可编辑的默认结果。
       info.title = parsedUrl.hostname
       info.icon = `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=128`
     }

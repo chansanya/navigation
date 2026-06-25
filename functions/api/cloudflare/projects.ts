@@ -25,6 +25,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const apiToken = context.env.CLOUDFLARE_API_TOKEN
   const accountId = context.env.CLOUDFLARE_ACCOUNT_ID
 
+  // Cloudflare 同步依赖用户自己的账号令牌，未配置时明确返回配置错误。
   if (!apiToken || !accountId) {
     return Response.json({
       success: false,
@@ -36,6 +37,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     const projects: CloudflareProject[] = []
 
     // 获取 Pages 项目
+    // Pages 项目和 Workers 脚本分开请求，单段失败只记录日志，不阻断另一段。
     try {
       const pagesResponse = await fetch(
         `https://api.cloudflare.com/client/v4/accounts/${accountId}/pages/projects`,
@@ -68,6 +70,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
                 const domainsData = await domainsResponse.json() as any
                 if (domainsData.success && domainsData.result) {
                   // 优先使用自定义域名（非 .pages.dev）
+                  // 这样导入后卡片打开的是用户真实站点入口。
                   const customDomains = domainsData.result.filter((d: any) =>
                     !d.name.endsWith('.pages.dev')
                   )
@@ -81,6 +84,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
             }
 
             // 确定最终 URL
+            // 没有自定义域名时按 Pages 的默认子域名逐级降级。
             let projectUrl = ''
             if (customDomain) {
               projectUrl = `https://${customDomain}`
@@ -139,6 +143,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
                 if (domainsData.success && domainsData.result) {
                   // 查找匹配当前 worker 的域名
+                  // 不同 API 版本可能返回 service 或 script 字段，两个都兼容。
                   const workerDomain = domainsData.result.find((d: any) =>
                     d.service === worker.id || d.script === worker.id
                   )
@@ -152,6 +157,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
             }
 
             // 如果没有找到自定义域名，尝试获取路由
+            // Worker 可能通过 route 绑定到现有域名，而不是 workers.dev。
             if (!workerUrl) {
               try {
                 const routesResponse = await fetch(
@@ -179,6 +185,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
             }
 
             // 如果还是没有，使用 workers.dev 域名
+            // 这是最后兜底，至少保证同步结果有可点击 URL。
             if (!workerUrl) {
               workerUrl = `https://${worker.id}.workers.dev`
             }

@@ -224,6 +224,7 @@ const hasActiveFilters = computed(() => Boolean(
 const filteredBookmarks = computed(() => {
   const keyword = filterKeyword.value.trim().toLowerCase()
 
+  // 所有筛选都只影响当前预览列表，不改变原始解析结果和选择状态。
   return bookmarks.value.filter((bookmark) => {
     if (filterCategory.value && bookmark.category !== filterCategory.value) return false
 
@@ -262,6 +263,7 @@ const visiblePages = computed(() => {
 
 const categoryOptions = computed(() => {
   const names = new Set<string>()
+  // 分类下拉同时包含数据库已有分类和书签文件里解析出的分类。
   sitesStore.categoryList.forEach((category: Category) => names.add(category.name))
   bookmarks.value.forEach((bookmark) => {
     if (bookmark.category) names.add(bookmark.category)
@@ -278,6 +280,7 @@ function normalizeUrl(value: string) {
     const url = new URL(trimmedValue)
     url.hash = ''
     url.hostname = url.hostname.toLowerCase()
+    // 查重时忽略默认端口和尾斜杠，与后端 URL 查重策略保持一致。
     if ((url.protocol === 'http:' && url.port === '80') || (url.protocol === 'https:' && url.port === '443')) {
       url.port = ''
     }
@@ -312,6 +315,7 @@ function normalizeIcon(anchor: HTMLAnchorElement) {
   const icon = anchor.getAttribute('ICON') || ''
   const href = anchor.href
 
+  // Chrome 导出的 ICON 可能是 data URI，也可能给 ICON_URI；优先使用可直接展示的图标。
   if (iconUri && /^https?:\/\//i.test(iconUri)) return iconUri
   if (icon && icon.startsWith('data:image/')) return icon
   if (icon && /^https?:\/\//i.test(icon)) return icon
@@ -324,6 +328,7 @@ function getDirectChild(element: Element, tagName: string) {
 }
 
 function getSiblingList(element: Element) {
+  // Netscape Bookmark HTML 有时把 H3 后面的 DL 作为兄弟节点而不是子节点。
   let sibling = element.nextElementSibling
   while (sibling) {
     if (sibling.tagName.toLowerCase() === 'dl') return sibling
@@ -334,12 +339,14 @@ function getSiblingList(element: Element) {
 }
 
 function walkBookmarkList(list: Element, categoryPath: string[], output: ParsedBookmark[]) {
+  // 递归遍历 DL/DT 结构，当前路径最后一级作为导入分类。
   Array.from(list.children).forEach((child) => {
     if (child.tagName.toLowerCase() !== 'dt') return
 
     const anchor = getDirectChild(child, 'a') as HTMLAnchorElement | undefined
     if (anchor) {
       const url = anchor.href
+      // 跳过 javascript、mailto 等非网页地址。
       if (!isWebUrl(url)) return
 
       const normalizedUrl = normalizeUrl(url)
@@ -372,6 +379,7 @@ function walkBookmarkList(list: Element, categoryPath: string[], output: ParsedB
 }
 
 function parseBookmarks(html: string) {
+  // Chrome/Google 使用 Netscape Bookmark HTML，根节点通常是 body > dl。
   const document = new DOMParser().parseFromString(html, 'text/html')
   const rootList = document.querySelector('body > dl') || document.querySelector('dl')
   if (!rootList) {
@@ -384,6 +392,7 @@ function parseBookmarks(html: string) {
 }
 
 async function fetchExistingSites() {
+  // 导入前先拉取现有站点，用归一化 URL 标记重复项。
   await sitesStore.fetchSites()
   existingSiteUrls.value = new Set(
     sitesStore.sites
@@ -403,6 +412,7 @@ async function handleFileChange(event: Event) {
 
   try {
     await fetchExistingSites()
+    // 文件只在浏览器本地解析，解析完成后再由用户确认导入。
     const html = await file.text()
     bookmarks.value = parseBookmarks(html)
     currentPage.value = 1
@@ -438,6 +448,7 @@ function applyBulkCategory() {
 function removeExistingBookmarks() {
   if (existingCount.value === 0) return
 
+  // 剔除重复项时同步清理图标失败缓存，避免残留无效 id。
   const existingIds = new Set(
     bookmarks.value
       .filter((bookmark) => bookmark.exists)
@@ -474,6 +485,7 @@ async function ensureCategories(categories: string[]) {
   await sitesStore.fetchCategories()
   const existingNames = new Set(sitesStore.categoryList.map((category: Category) => category.name))
 
+  // 书签 HTML 中出现但数据库不存在的分类，导入前自动补齐。
   for (const category of categories) {
     if (!category || existingNames.has(category)) continue
     const created = await sitesStore.createCategory(category)
@@ -492,6 +504,7 @@ async function handleImport() {
   try {
     await ensureCategories(Array.from(new Set(selectedItems.map((bookmark) => bookmark.category))))
 
+    // 逐条调用站点创建 API，让后端重复 URL 和隐私分类校验继续生效。
     for (const bookmark of selectedItems) {
       await sitesStore.createSite({
         name: bookmark.name,

@@ -78,6 +78,7 @@ const settingsStore = useSettingsStore()
 const presetName = ref('')
 const selectedPresetId = ref('')
 
+// 预设可能被初始化或重建，当前选中项不存在时清空高亮，避免显示一个无法再次应用的状态。
 watch(() => settingsStore.presets, (presets) => {
   if (selectedPresetId.value && !presets.some(preset => preset.id === selectedPresetId.value)) {
     selectedPresetId.value = ''
@@ -85,9 +86,11 @@ watch(() => settingsStore.presets, (presets) => {
 }, { deep: true })
 
 function handleCreatePreset() {
+  // 新增预设保存当前完整全局外观：站点名、Logo、主题、背景、透明度和字体等。
   const created = settingsStore.createPreset(presetName.value)
   if (!created) return
 
+  // createPreset 内部会生成 id，这里按名称找回刚保存的预设用于立刻高亮。
   const savedPreset = settingsStore.presets.find(preset => preset.name === presetName.value.trim())
   selectedPresetId.value = savedPreset?.id || ''
   presetName.value = ''
@@ -102,12 +105,14 @@ function handleSiteLogoInput(event: Event) {
 }
 
 function applyPreset(id: string) {
+  // 应用预设只改本地 store，持久化由 settings store 的统一保存流程负责。
   if (settingsStore.applyPreset(id)) {
     selectedPresetId.value = id
   }
 }
 
 function getPreviewStyle(preset: SettingsPreset) {
+  // 预览卡只表达大致色彩和背景类型，视频背景用深色块代表，避免在列表里加载多个视频。
   if (preset.background.type === 'image') {
     return {
       backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.18)), url(${preset.background.value})`

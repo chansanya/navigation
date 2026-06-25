@@ -34,6 +34,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
       }, { status: 404 })
     }
 
+    // 涉及隐私空间的分类改名或排序必须先进入隐私模式。
     if ((isPrivateCategory(existingCategory.name) || isPrivateCategory(nextName)) && !context.data.isPrivacyUnlocked) {
       return Response.json({
         success: false,
@@ -55,6 +56,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     }
 
     // 构建更新语句
+    // name 和 sort 都是可选字段，避免只拖动排序时必须带分类名。
     const updates: string[] = []
     const params: any[] = []
 
@@ -75,6 +77,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     ).bind(...params).run()
 
     if (nextName && nextName !== existingCategory.name) {
+      // 站点表按分类名关联；分类改名后需要同步已有站点的 category 字段。
       await context.env.DB.prepare(
         'UPDATE sites SET category = ? WHERE category = ?'
       ).bind(nextName, existingCategory.name).run()
@@ -112,6 +115,7 @@ export const onRequestDelete: PagesFunction<Env> = async (context) => {
     }
 
     // 检查分类下是否有站点
+    // 只允许删除空分类，避免站点变成不可见的孤立分类。
     const siteCount = await context.env.DB.prepare(
       'SELECT COUNT(*) as count FROM sites WHERE category = (SELECT name FROM categories WHERE id = ?)'
     ).bind(id).first()

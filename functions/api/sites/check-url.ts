@@ -33,6 +33,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       }, { status: 400 })
     }
 
+    // 编辑已有站点时通过 excludeId 排除自身，避免 URL 未变也被判定重复。
     const existingSite = await findSiteByUrl(
       context.env.DB,
       url,
@@ -55,6 +56,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       })
     }
 
+    // 投稿入口需要同时检查待审核队列，避免同一个站点反复提交。
     const pendingSubmission = await findPendingSubmissionByUrl(context.env.DB, url)
 
     return Response.json({

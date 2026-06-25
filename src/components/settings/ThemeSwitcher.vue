@@ -27,6 +27,7 @@ import type { ThemeType } from '@/stores/settings'
 
 const settingsStore = useSettingsStore()
 
+// 这里只保留当前仍支持的主题，已删除的旧风格不要再出现在设置入口。
 const themes = [
   {
     value: 'glass' as ThemeType,
@@ -41,6 +42,7 @@ const themes = [
 ]
 
 function handleThemeChange(theme: ThemeType) {
+  // 主题切换只写入设置 store，具体 CSS 变量由 App.vue 统一挂载到根节点。
   settingsStore.updateTheme(theme)
 }
 </script>

@@ -191,22 +191,26 @@ type WeightKey = 'topbarFontWeight' | 'menuFontWeight' | 'cardFontWeight'
 const settingsStore = useSettingsStore()
 
 function getInputValue(event: Event) {
+  // 所有原生 input 事件先统一取 value，再按颜色、透明度、字重分别转换。
   return (event.target as HTMLInputElement).value
 }
 
 function handleColorInput(key: ColorKey, event: Event) {
+  // 颜色字段保持字符串，交给 settings store 统一归一化和自动保存。
   settingsStore.updateAppearance({
     [key]: getInputValue(event)
   } as Partial<AppearanceConfig>)
 }
 
 function handleOpacityInput(key: OpacityKey, event: Event) {
+  // range 的值是字符串，写入 store 前转成数字。
   settingsStore.updateAppearance({
     [key]: Number(getInputValue(event))
   } as Partial<AppearanceConfig>)
 }
 
 function handleWeightInput(key: WeightKey, event: Event) {
+  // 字重只允许 100 阶梯，store 会再次做范围保护。
   settingsStore.updateAppearance({
     [key]: Number(getInputValue(event))
   } as Partial<AppearanceConfig>)

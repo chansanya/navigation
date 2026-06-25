@@ -18,6 +18,7 @@
 import type { Site } from '@/stores/sites'
 import SiteCard from './SiteCard.vue'
 
+// 旧版按分类分块展示的组件，保留给简单列表场景复用。
 interface Props {
   category: string
   sites: Site[]

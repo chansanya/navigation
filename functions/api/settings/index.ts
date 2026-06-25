@@ -9,6 +9,7 @@ interface Env {
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
+    // 设置公开读取，用于未认证访客也能拿到主题、背景和站点标题。
     const settings = await getSettings(context.env.DB)
 
     return Response.json({
@@ -24,7 +25,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 }
 
 export const onRequestPut: PagesFunction<Env> = async (context) => {
-  // 检查认证
+  // 外观设置会影响所有访客，只允许管理员会话写入。
   if (!context.data.isAuthenticated) {
     return Response.json({
       success: false,
@@ -35,7 +36,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
   try {
     const data = await context.request.json() as any
 
-    // 更新每个提供的设置项
+    // PUT 允许部分字段更新，未传字段保持原值，方便各设置面板独立保存。
     if (data.siteTitle !== undefined) {
       await updateSetting(context.env.DB, 'siteTitle', data.siteTitle)
     }
@@ -55,7 +56,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
       await updateSetting(context.env.DB, 'presets', data.presets)
     }
 
-    // 返回更新后的设置
+    // 返回更新后的完整设置，让前端拿到服务端归一化后的最终配置。
     const settings = await getSettings(context.env.DB)
 
     return Response.json({

@@ -12,6 +12,7 @@ function normalizeUrl(value: unknown) {
 
   const trimmed = value.trim()
   if (!trimmed) return ''
+  // 快捷方式允许站内相对路径或锚点，方便把内部页面也放到搜索首页。
   if (trimmed.startsWith('/') || trimmed.startsWith('#')) return trimmed
   if (/^[a-z][a-z\d+\-.]*:\/\//i.test(trimmed)) return trimmed
 
@@ -31,6 +32,7 @@ function isValidUrl(value: string) {
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
+    // 未进入隐私模式时，关联隐私空间站点的快捷方式会在 db 层被过滤。
     const shortcuts = await getShortcuts(context.env.DB, Boolean(context.data.isPrivacyUnlocked))
 
     return Response.json({
@@ -74,6 +76,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     const siteId = typeof data.site_id === 'number' ? data.site_id : null
     if (siteId) {
+      // 从隐私站点创建快捷方式时，需要确认当前会话能看到该站点。
       const site = await getSiteById(context.env.DB, siteId)
       if (isPrivateCategory(site?.category) && !context.data.isPrivacyUnlocked) {
         return Response.json({

@@ -335,6 +335,7 @@ const normalizedSearchQuery = computed(() => (props.searchQuery || '').trim().to
 const isSearching = computed(() => Boolean(normalizedSearchQuery.value))
 const canUseLocalCategoryHiding = computed(() => !props.showActions && !authStore.isAuthenticated)
 const visibleCategories = computed(() => {
+  // 本机分类屏蔽只对未认证浏览态生效，不影响数据库和管理员视图。
   if (!canUseLocalCategoryHiding.value) return props.categories
   return props.categories.filter((category) => !hiddenCategoryNames.value.has(category.category))
 })
@@ -377,6 +378,7 @@ const emptyMessage = computed(() => {
 
 const currentSites = computed(() => {
   if (isSearching.value) {
+    // 搜索时跨全部可见分类匹配名称和描述，并暂时取消分类高亮语义。
     return visibleCategories.value
       .flatMap((category) => category.sites)
       .filter((site) => {
@@ -392,6 +394,7 @@ const currentSites = computed(() => {
 
 function loadHiddenCategories() {
   try {
+    // 屏蔽列表只保存在当前浏览器，用于个人浏览偏好。
     const rawValue = window.localStorage.getItem(LOCAL_HIDDEN_CATEGORY_KEY)
     const parsed = rawValue ? JSON.parse(rawValue) : []
     if (!Array.isArray(parsed)) return new Set<string>()
@@ -434,6 +437,7 @@ function updateCategoryScrollHint() {
     return
   }
 
+  // 隐藏滚动条后用底部箭头提示“下方还有内容”。
   const remainingScroll = el.scrollHeight - el.scrollTop - el.clientHeight
   showCategoryScrollHint.value = remainingScroll > 8
 }
@@ -460,6 +464,7 @@ function handleAddSite() {
 }
 
 function openMoveModal(site: Site) {
+  // 卡片移动分类用弹窗单选，避免拖拽在分类很多时不容易定位。
   movingSite.value = site
   selectedMoveCategory.value = site.category || ''
   moveCategorySearch.value = ''
@@ -485,6 +490,7 @@ function confirmMoveSite() {
 }
 
 watch([() => props.categories, visibleCategories], () => {
+  // 分类被删除或隐私状态变化后，清理本地屏蔽列表中已经不存在的分类。
   const categoryNames = new Set(props.categories.map((category) => category.category))
   const nextHiddenCategories = new Set(
     Array.from(hiddenCategoryNames.value).filter((category) => categoryNames.has(category))
@@ -496,6 +502,7 @@ watch([() => props.categories, visibleCategories], () => {
   }
 
   if (!visibleCategories.value.some((category) => category.category === currentCategory.value)) {
+    // 当前分类不可见时自动落到第一个可见分类，避免右侧面板空引用。
     currentCategory.value = visibleCategories.value[0]?.category || ''
   }
   refreshCategoryScrollHint()
@@ -562,6 +569,7 @@ function handleSiteDragStart(site: Site) {
   if (!canManage.value || isSearching.value || !site.id) return
 
   if (!props.showActions) {
+    // 拖动卡片时自动进入编辑模式，排序完成后仍由父组件控制退出。
     emit('enterEditMode')
   }
 
@@ -577,6 +585,7 @@ function handleSiteDragEnd() {
 
 function handleSiteDragOver(site: Site, index: number, e: DragEvent) {
   if (!canManage.value || isSearching.value || draggingSiteId.value === null) return
+  // 卡片拖动排序只允许在当前分类内部进行，跨分类移动使用移动弹窗或分类拖放。
   if (draggingSiteCategory.value !== currentCategory.value || site.category !== currentCategory.value) return
 
   e.preventDefault()
@@ -640,6 +649,7 @@ function handleDrop(category: string, toIndex: number, e: DragEvent) {
 
   // 如果是分类拖拽（调整顺序）
   if (dataType === 'category' && draggingCategoryIndex.value !== null) {
+    // 分类排序只上报索引变化，实际 sort 值由父组件和 store 统一写入。
     emit('reorderCategory', draggingCategoryIndex.value, toIndex)
     return
   }
@@ -655,6 +665,7 @@ function handleDrop(category: string, toIndex: number, e: DragEvent) {
     if (site.category === category) return
 
     // 触发分类修改事件
+    // 站点跨分类拖放只改分类，不处理同分类内排序。
     emit('changeCategory', site, category)
   } catch (error) {
     console.error('拖放处理失败:', error)
@@ -696,6 +707,7 @@ function confirmCategoryModal() {
   if (!name) return
 
   if (editingCategory.value?.categoryId) {
+    // 分类改名后立即更新当前选中名称，等待父组件刷新真实分类列表。
     emit('renameCategory', editingCategory.value.categoryId, editingCategory.value.category, name)
     if (currentCategory.value === editingCategory.value.category) {
       currentCategory.value = name

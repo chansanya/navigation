@@ -21,10 +21,12 @@ const privacyStore = usePrivacyStore()
 const themeClass = computed(() => `theme-${settingsStore.theme}`)
 
 watch(() => settingsStore.siteTitle, (title) => {
+  // 页面标题跟随外观设置，标题为空时回落到默认品牌名。
   document.title = title.trim() || 'Nav'
 }, { immediate: true })
 
 function clampOpacity(value: number) {
+  // 外观滑块写入 CSS 变量前统一限制范围，避免异常配置破坏布局。
   return Math.min(1, Math.max(0, value))
 }
 
@@ -35,6 +37,7 @@ const appearanceStyle = computed(() => {
   const cardOpacity = Math.round(clampOpacity(appearance.cardOpacity) * 100)
 
   return {
+    // 这些 CSS 变量是主题和组件之间的边界，组件只消费变量，不直接读取 store。
     '--appearance-topbar-text-color': appearance.topbarTextColor,
     '--appearance-topbar-border-color': appearance.topbarBorderColor,
     '--appearance-topbar-font-weight': appearance.topbarFontWeight,
@@ -55,6 +58,7 @@ const appearanceStyle = computed(() => {
 })
 
 onMounted(() => {
+  // 应用启动时恢复服务端 Cookie 会话，并拉取外观设置。
   authStore.checkSession()
   privacyStore.checkSession()
   settingsStore.fetchSettings()

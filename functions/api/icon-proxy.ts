@@ -17,6 +17,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   try {
     // 请求原始图标，关键：不带 Referer 和 Origin
+    // 一些站点会根据 Referer 防盗链，代理请求可以提升 favicon 成功率。
     const response = await fetch(iconUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -28,6 +29,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
     if (!response.ok) {
       // 图标加载失败，返回默认图标或使用第三方服务
+      // DuckDuckGo 的 ip3 服务作为兜底，不需要解析页面 HTML。
       const domain = new URL(iconUrl).hostname
       const fallbackUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`
 
@@ -46,6 +48,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     }
 
     // 返回图标，添加缓存头
+    // favicon 变化频率低，缓存一天可减少边缘函数请求量。
     return new Response(response.body, {
       headers: {
         'Content-Type': response.headers.get('Content-Type') || 'image/x-icon',

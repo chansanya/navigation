@@ -6,6 +6,7 @@
 </template>
 
 <script setup lang="ts">
+// 通用加载态组件，只负责展示，不持有异步状态。
 interface Props {
   loading: boolean
   message?: string

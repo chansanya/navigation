@@ -98,6 +98,7 @@ const existingSiteUrls = ref<Set<string>>(new Set())
 const importing = ref(false)
 const cloudflareCategoryName = 'cloudflare'
 
+// 列表里仍展示已存在项目，但批量选择和导入只作用于可导入项，便于管理员核对同步结果。
 const importableProjects = computed(() => projects.value.filter(
   (project: CloudflareProject) => !isProjectImported(project)
 ))
@@ -112,6 +113,7 @@ function normalizeUrl(value: string) {
   if (!trimmedValue) return ''
 
   try {
+    // 判重忽略 hash、域名大小写和末尾斜杠，和手动新增/书签导入保持同一类 URL 语义。
     const url = new URL(trimmedValue)
     url.hash = ''
     url.hostname = url.hostname.toLowerCase()
@@ -126,6 +128,7 @@ function isProjectImported(project: CloudflareProject) {
 }
 
 function toggleSelectAll() {
+  // 全选只选择未入库项目，已存在项目保持勾选禁用状态作为“已经同步”的视觉反馈。
   if (selectedProjects.value.length === importableProjects.value.length) {
     selectedProjects.value = []
   } else {
@@ -146,6 +149,7 @@ function toggleProject(project: CloudflareProject) {
 
 async function fetchExistingSites() {
   await sitesStore.fetchSites()
+  // 先把本地已有站点归一化成 Set，项目列表渲染时即可 O(1) 标记重复。
   existingSiteUrls.value = new Set(
     sitesStore.sites
       .map(site => normalizeUrl(site.url))
@@ -158,6 +162,7 @@ async function fetchProjects() {
   error.value = ''
 
   try {
+    // 项目列表和已有站点并行获取，避免先后等待导致弹窗打开时空白时间过长。
     const [response] = await Promise.all([
       fetch('/api/cloudflare/projects'),
       fetchExistingSites()
@@ -171,6 +176,7 @@ async function fetchProjects() {
 
     if (data.success && data.projects) {
       projects.value = data.projects
+      // 刷新后清掉已存在或已消失的选择，防止提交时导入不可见项目。
       selectedProjects.value = selectedProjects.value.filter((id: string) => {
         const project = data.projects?.find((item: CloudflareProject) => item.id === id)
         return project ? !isProjectImported(project) : false
@@ -188,12 +194,14 @@ async function fetchProjects() {
 async function ensureCloudflareCategory() {
   await sitesStore.fetchCategories()
 
+  // Cloudflare 同步固定落到独立分类；存在则复用，不存在才创建，避免重复分类。
   const exists = sitesStore.categoryList.some((category: Category) => category.name === cloudflareCategoryName)
   if (exists) return
 
   const created = await sitesStore.createCategory(cloudflareCategoryName)
   if (created) return
 
+  // 并发创建或服务端返回异常时再拉一次，确认分类是否已经由其他请求建好。
   await sitesStore.fetchCategories()
   const existsAfterRetry = sitesStore.categoryList.some((category: Category) => category.name === cloudflareCategoryName)
   if (!existsAfterRetry) {
@@ -209,11 +217,13 @@ async function handleImport() {
   try {
     await ensureCloudflareCategory()
 
+    // 最终导入前再次过滤已存在项目，避免管理员在列表加载后又通过别处新增造成重复。
     const selectedItems = projects.value.filter((project: CloudflareProject) => (
       selectedProjects.value.includes(project.id) && !isProjectImported(project)
     ))
 
     for (const project of selectedItems) {
+      // 逐条创建便于沿用站点 store 的认证、错误处理和默认字段规范。
       await sitesStore.createSite({
         name: project.name,
         url: project.url,

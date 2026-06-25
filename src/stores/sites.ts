@@ -46,6 +46,7 @@ export const useSitesStore = defineStore('sites', () => {
     // 先按 sort 排序分类
     const sortedCategories = [...categoryList.value].sort((a: Category, b: Category) => b.sort - a.sort)
 
+    // 只展示数据库里存在的分类，避免书签导入等临时来源制造孤立分类面板。
     return sortedCategories.map((category: Category) => ({
       category: category.name,
       categoryId: category.id,
@@ -177,6 +178,7 @@ export const useSitesStore = defineStore('sites', () => {
       const data = await response.json() as ApiResponse
 
       if (data.success) {
+        // 分类改名会同步影响站点的 category 字段，所以分类和站点都需要刷新。
         await Promise.all([fetchCategories(), fetchSites()])
         return true
       }
@@ -219,6 +221,7 @@ export const useSitesStore = defineStore('sites', () => {
   async function createSite(siteData: Site): Promise<boolean> {
     const privacyStore = usePrivacyStore()
 
+    // 前端先做一次隐私空间门槛判断，后端仍会再次校验，形成双层保护。
     if (siteData.category === PRIVATE_CATEGORY_NAME && !privacyStore.isUnlocked) {
       error.value = '请先进入隐私模式'
       return false
@@ -254,6 +257,7 @@ export const useSitesStore = defineStore('sites', () => {
   async function updateSite(id: number, siteData: Partial<Site>): Promise<boolean> {
     const privacyStore = usePrivacyStore()
 
+    // 移入隐私空间属于敏感操作，必须先进入隐私模式。
     if (siteData.category === PRIVATE_CATEGORY_NAME && !privacyStore.isUnlocked) {
       error.value = '请先进入隐私模式'
       return false

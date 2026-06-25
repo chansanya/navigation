@@ -17,7 +17,7 @@ interface Env {
 }
 
 export const onRequestPut: PagesFunction<Env> = async (context) => {
-  // 检查认证
+  // 更新站点同时影响首页展示和管理数据，必须先通过管理员认证。
   if (!context.data.isAuthenticated) {
     return Response.json({
       success: false,
@@ -34,7 +34,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
       }, { status: 400 })
     }
 
-    // 检查站点是否存在
+    // 先读取旧记录，后续隐私权限和 URL 查重都需要对比当前值。
     const existing = await getSiteById(context.env.DB, id)
     if (!existing) {
       return Response.json({
@@ -70,6 +70,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
       data.url = url
     }
 
+    // 只要原分类或目标分类涉及隐私空间，都要求当前会话已解锁隐私模式。
     if ((isPrivateCategory(existing.category) || isPrivateCategory(data.category)) && !context.data.isPrivacyUnlocked) {
       return Response.json({
         success: false,
@@ -92,7 +93,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
 }
 
 export const onRequestDelete: PagesFunction<Env> = async (context) => {
-  // 检查认证
+  // 删除是不可逆操作，必须先通过管理员认证。
   if (!context.data.isAuthenticated) {
     return Response.json({
       success: false,
@@ -109,7 +110,7 @@ export const onRequestDelete: PagesFunction<Env> = async (context) => {
       }, { status: 400 })
     }
 
-    // 检查站点是否存在
+    // 删除前确认记录存在，避免前端把重复点击误判为成功。
     const existing = await getSiteById(context.env.DB, id)
     if (!existing) {
       return Response.json({
@@ -118,6 +119,7 @@ export const onRequestDelete: PagesFunction<Env> = async (context) => {
       }, { status: 404 })
     }
 
+    // 删除隐私空间站点同样需要隐私模式，避免只凭管理认证误删。
     if (isPrivateCategory(existing.category) && !context.data.isPrivacyUnlocked) {
       return Response.json({
         success: false,

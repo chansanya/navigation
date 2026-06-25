@@ -132,6 +132,7 @@ function normalizeSiteTitle(value: unknown): string {
   if (typeof value !== 'string') return defaultSiteTitle
 
   const trimmed = value.trim()
+  // 老版本默认标题较长，读取时统一迁移成当前简短品牌名。
   if (trimmed === legacyDefaultSiteTitle) return defaultSiteTitle
   if (!trimmed) return ''
 
@@ -143,6 +144,7 @@ function normalizeSiteLogo(value: unknown): string {
 
   const trimmed = value.trim().slice(0, 500)
   if (!trimmed) return defaultSiteLogo
+  // 只允许站内路径或 http(s) 图片，避免把任意协议写进 logo 地址。
   if (trimmed.startsWith('/') && !trimmed.startsWith('//')) return trimmed
   if (/^https?:\/\//i.test(trimmed)) return trimmed
 
@@ -150,6 +152,7 @@ function normalizeSiteLogo(value: unknown): string {
 }
 
 function normalizeBackground(value: RawBackgroundConfig | undefined): BackgroundConfig {
+  // 粒子背景只需要内置 default，图片和视频背景才保存外部地址。
   if ((value?.type === 'image' || value?.type === 'video') && typeof value.value === 'string') {
     return {
       type: value.type,
@@ -178,6 +181,7 @@ function normalizeFontWeight(value: unknown, fallback: number): number {
 
 function normalizeAppearance(value: (Partial<AppearanceConfig> & { mode?: string }) | undefined): AppearanceConfig {
   if (value?.mode === 'readable') {
+    // 兼容旧版 readable 模式，把它映射成当前细粒度外观配置。
     return { ...readableAppearance }
   }
 
@@ -233,6 +237,7 @@ function normalizePresets(value: RawSettingsPreset[] | undefined): SettingsPrese
 }
 
 function createPresetId() {
+  // 预设只需要前端生成稳定 ID，后端按 settings JSON 整体保存。
   return `preset-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 }
 
@@ -254,6 +259,7 @@ export const useSettingsStore = defineStore('settings', () => {
       const data = await response.json() as SettingsResponse
 
       if (data.success && data.settings) {
+        // 所有远程设置都先归一化，避免旧数据或手工改库导致界面变量缺失。
         siteTitle.value = normalizeSiteTitle(data.settings.siteTitle)
         siteLogo.value = normalizeSiteLogo(data.settings.siteLogo)
         theme.value = normalizeTheme(data.settings.theme)
@@ -271,6 +277,7 @@ export const useSettingsStore = defineStore('settings', () => {
   // 保存设置到后端
   async function saveSettings(): Promise<boolean> {
     try {
+      // 保存完整设置快照，便于主题、背景、外观和预设保持一致。
       const response = await fetch('/api/settings', {
         method: 'PUT',
         headers: {
@@ -340,6 +347,7 @@ export const useSettingsStore = defineStore('settings', () => {
 
     const existingIndex = presets.value.findIndex(item => item.name === normalizedName)
     if (existingIndex >= 0) {
+      // 同名预设视为覆盖，保留原 ID 让已选预设引用不抖动。
       presets.value.splice(existingIndex, 1, {
         ...preset,
         id: presets.value[existingIndex].id
@@ -374,6 +382,7 @@ export const useSettingsStore = defineStore('settings', () => {
   // 监听设置变化，自动保存（仅在已认证时）
   watch([siteTitle, siteLogo, theme, background, appearance, presets], () => {
     const authStore = useAuthStore()
+    // 外观设置属于管理能力；未认证用户只能读取，不能自动写回数据库。
     if (authStore.isAuthenticated) {
       saveSettings()
     }

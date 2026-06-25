@@ -98,6 +98,7 @@ async function fetchData() {
   loading.value = true
 
   try {
+    // 审核列表和分类并行加载，分类下拉需要包含当前隐私模式下可见的全部分类。
     await Promise.all([
       fetchSubmissions(),
       fetchCategories()
@@ -130,6 +131,7 @@ async function fetchCategories() {
 }
 
 function getIconUrl(icon: string) {
+  // Google favicon 和已代理地址可以直接用，其它远程图标走代理以减少跨域/防盗链导致的加载失败。
   if (icon.startsWith('/api/icon-proxy') || icon.includes('google.com/s2/favicons')) return icon
   if (icon.startsWith('http://') || icon.startsWith('https://')) {
     return `/api/icon-proxy?url=${encodeURIComponent(icon)}`
@@ -138,6 +140,7 @@ function getIconUrl(icon: string) {
 }
 
 async function reviewSubmission(submission: Submission, action: 'approve' | 'reject') {
+  // 审核弹窗允许管理员先修正名称、分类、图标和描述，再把修正后的内容提交给后端收录。
   const response = await fetch(`/api/submissions/${submission.id}`, {
     method: 'PUT',
     headers: {
@@ -160,6 +163,7 @@ async function reviewSubmission(submission: Submission, action: 'approve' | 'rej
     return
   }
 
+  // 审核成功后本地移除当前项，避免再次操作同一条投稿；父级据此刷新站点列表。
   submissions.value = submissions.value.filter((item) => item.id !== submission.id)
   emit('changed')
 }

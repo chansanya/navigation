@@ -246,6 +246,7 @@ const failedShortcutIconKeys = ref<Set<string>>(new Set())
 
 onMounted(() => {
   shortcutsStore.fetchShortcuts()
+  // 快捷方式右上角菜单点击页面其它区域时关闭，保持 Google 风格的轻量交互。
   window.addEventListener('click', closeShortcutMenu)
 })
 
@@ -258,6 +259,7 @@ watch(normalizedSiteLogo, () => {
 })
 
 watch(shortcuts, () => {
+  // 快捷方式列表刷新后重新尝试图标加载，避免旧的失败状态影响新 URL。
   failedShortcutIconKeys.value = new Set()
 })
 
@@ -269,6 +271,7 @@ function handleSearch() {
     encodeURIComponent(searchQuery.value.trim())
   )
 
+  // 搜索结果在新窗口打开，导航页本身保持为常驻入口。
   window.open(url, '_blank')
   searchQuery.value = ''
 }
@@ -282,6 +285,7 @@ function isShortcutIconImage(icon: string | null | undefined) {
 
   const trimmed = icon.trim()
   if (!trimmed) return false
+  // 单字符或双字符通常是占位文本，不应该当作图片 src 加载。
   if (trimmed.length === 1) return false
   if (trimmed.startsWith('/')) return true
   if (trimmed.startsWith('data:image/')) return true
@@ -298,6 +302,7 @@ function isShortcutIconFailed(shortcut: { id?: number; url: string }) {
 }
 
 function handleShortcutIconError(shortcut: { id?: number; url: string }) {
+  // Vue 需要替换 Set 引用才会触发依赖更新。
   failedShortcutIconKeys.value = new Set([
     ...failedShortcutIconKeys.value,
     getShortcutIconKey(shortcut)
@@ -306,6 +311,7 @@ function handleShortcutIconError(shortcut: { id?: number; url: string }) {
 
 function getShortcutIconFallbackText(shortcut: { icon?: string | null; name: string }) {
   const icon = (shortcut.icon || '').trim()
+  // 已保存的字母占位符优先展示，否则取快捷方式名称首字母。
   if (icon && icon.length <= 2 && !icon.includes('/') && !icon.includes(':')) {
     return icon.toUpperCase()
   }
@@ -315,6 +321,7 @@ function getShortcutIconFallbackText(shortcut: { icon?: string | null; name: str
 
 function getFallbackShortcutIcon(url: string) {
   try {
+    // 手工新增快捷方式时缓存一个可跨设备访问的 favicon 地址。
     const hostname = new URL(normalizeShortcutUrl(url)).hostname
     return hostname ? `https://www.google.com/s2/favicons?domain=${hostname}&sz=128` : null
   } catch {
@@ -339,6 +346,7 @@ function normalizeShortcutUrl(url: string) {
   if (trimmedUrl.startsWith('/') || trimmedUrl.startsWith('#')) return trimmedUrl
   if (/^[a-z][a-z\d+\-.]*:\/\//i.test(trimmedUrl)) return trimmedUrl
 
+  // 允许用户只填域名，保存前补全协议。
   return `https://${trimmedUrl}`
 }
 
@@ -355,6 +363,7 @@ function isValidShortcutUrl(url: string) {
 
 function openShortcut(url: string) {
   closeShortcutMenu()
+  // 快捷方式永远新窗口打开，避免从搜索主页误跳走。
   window.open(normalizeShortcutUrl(url), '_blank', 'noopener,noreferrer')
 }
 
@@ -412,6 +421,7 @@ async function saveShortcut() {
   }
 
   const success = editingShortcutId.value
+    // 编辑时重新计算 fallback 图标，让 URL 改变后图标也跟着更新。
     ? await shortcutsStore.updateShortcut(editingShortcutId.value, {
       name,
       url,

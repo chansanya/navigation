@@ -16,12 +16,14 @@ export const usePrivacyStore = defineStore('privacy', () => {
 
   function clearLegacyPrivacyStorage() {
     if (typeof window === 'undefined') return
+    // 隐私模式也从旧的 sessionStorage 令牌迁移到 HttpOnly Cookie。
     window.sessionStorage.removeItem('navigation-privacy-token')
   }
 
   async function verifyPassword(password: string): Promise<boolean> {
     try {
       clearLegacyPrivacyStorage()
+      // 隐私密码只用于解锁隐私分类和密码本入口，不等同于管理认证。
       const response = await fetch('/api/privacy/verify', {
         method: 'POST',
         credentials: 'same-origin',
@@ -48,6 +50,7 @@ export const usePrivacyStore = defineStore('privacy', () => {
   async function checkSession(): Promise<boolean> {
     try {
       clearLegacyPrivacyStorage()
+      // 隐私模式刷新后由服务端 Cookie 判断是否仍然解锁。
       const response = await fetch('/api/privacy/session', {
         credentials: 'same-origin'
       })
@@ -74,6 +77,7 @@ export const usePrivacyStore = defineStore('privacy', () => {
   }
 
   function privacyHeaders(): Record<string, string> {
+    // 旧实现曾通过 header 传隐私令牌；现在认证状态随 Cookie 自动发送。
     return {}
   }
 

@@ -60,6 +60,7 @@ if [[ -z "${DB_NAME}" ]]; then
 fi
 
 if [[ "${SQL_FILE}" != /* ]]; then
+  # 统一转成仓库内绝对路径，避免从其它目录调用脚本时找错 SQL 文件。
   SQL_FILE="${REPO_ROOT}/${SQL_FILE}"
 fi
 
@@ -70,6 +71,7 @@ if [[ ! -f "${SQL_FILE}" ]]; then
 fi
 
 if grep -Eiq '^[[:space:]]*(BEGIN([[:space:]]+TRANSACTION)?|COMMIT|SAVEPOINT|ROLLBACK|PRAGMA)([[:space:];=]|$)' "${SQL_FILE}"; then
+  # 本地也使用 Wrangler 执行 SQL，保持和远程一致的 D1 兼容性检查。
   echo "SQL 文件包含 D1 不支持的事务或外键开关语句: ${SQL_FILE}" >&2
   echo "请重新运行: npm run export:remote-db" >&2
   exit 1
@@ -81,6 +83,7 @@ echo
 echo "注意: 该 SQL 可能会先删除本地表数据，再写入远程导出的数据。"
 
 if [[ "${SKIP_CONFIRM}" -ne 1 ]]; then
+  # 本地同步同样会覆盖数据，保留确认步骤避免误清空当前调试库。
   read -r -p "确认同步到本地 D1？输入 yes 继续: " CONFIRM
   if [[ "${CONFIRM}" != "yes" ]]; then
     echo "已取消"

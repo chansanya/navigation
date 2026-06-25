@@ -147,9 +147,10 @@ const extractSuccess = ref(false)
 const duplicateChecking = ref(false)
 const duplicateMessage = ref('')
 let duplicateTimer: ReturnType<typeof setTimeout> | null = null
+// URL 检测会被输入、失焦、提交多处触发，用递增 ID 丢弃较早返回的响应，避免旧结果覆盖新输入。
 let duplicateRequestId = 0
 
-// 图标选项列表
+// 图标候选保留多个来源：站点原始 favicon、代理版本和 Google favicon，方便在跨域或图片失效时手动切换。
 interface IconOption {
   label: string
   url: string
@@ -158,7 +159,6 @@ interface IconOption {
 
 const iconOptions = ref<IconOption[]>([])
 
-// 生成图标选项
 function generateIconOptions(extractedIcon?: string) {
   if (!formData.value.url) return
 
@@ -169,7 +169,7 @@ function generateIconOptions(extractedIcon?: string) {
 
     const options: IconOption[] = []
 
-    // 1. 提取的图标（如果有）
+    // 优先展示解析得到的真实图标，同时提供代理地址，解决部分站点不允许直接加载的问题。
     if (extractedIcon) {
       options.push({
         label: '网站原图标',
@@ -183,13 +183,12 @@ function generateIconOptions(extractedIcon?: string) {
       })
     }
 
-    // 3. 默认 favicon.ico
+    // 常规 favicon 和 Google API 都作为兜底，保存时只记录选中的 URL，不额外改写站点数据。
     options.push({
       label: 'Favicon.ico',
       url: `${origin}/favicon.ico`
     })
 
-    // 4. Google Favicon API
     options.push({
       label: 'Google API',
       url: `https://www.google.com/s2/favicons?domain=${domain}&sz=128`
@@ -217,13 +216,12 @@ const showCustomCategory = ref(false)
 const customCategoryInput = ref('')
 const dropdownOpen = ref(false)
 
-// 选择分类
 function selectCategory(name: string) {
   formData.value.category = name
   dropdownOpen.value = false
 }
 
-// 点击外部关闭下拉框
+// 组件内局部指令只服务这个自定义下拉框，避免为一个小交互引入全局依赖。
 const vClickOutside = {
   mounted(el: any, binding: any) {
     el.clickOutsideEvent = (event: Event) => {
@@ -238,7 +236,6 @@ const vClickOutside = {
   }
 }
 
-// 加载分类列表
 async function fetchCategories() {
   try {
       const response = await fetch('/api/categories', {
@@ -256,7 +253,6 @@ async function fetchCategories() {
   }
 }
 
-// 添加自定义分类
 async function addCustomCategory() {
   if (!customCategoryInput.value.trim()) return
 
@@ -277,11 +273,9 @@ async function addCustomCategory() {
     }
 
     if (data.success && data.category) {
-      // 添加到本地列表
+      // 新建分类后立即加入本地列表并选中，让新增站点可以一次性完成，不需要重新打开编辑器。
       categories.value.push(data.category)
-      // 设置为当前选中
       formData.value.category = data.category.name
-      // 重置状态
       showCustomCategory.value = false
       customCategoryInput.value = ''
     } else {
@@ -310,6 +304,7 @@ watch(() => formData.value.url, () => {
 
   if (!formData.value.url.trim()) return
 
+  // 输入中做轻量防抖，避免每个字符都请求后端；提交时仍会强制再检查一次。
   duplicateTimer = setTimeout(() => {
     checkDuplicateUrl()
   }, 450)
@@ -318,6 +313,7 @@ watch(() => formData.value.url, () => {
 function normalizeSiteUrl(url: string) {
   const trimmed = url.trim()
   if (!trimmed) return ''
+  // 后端校验需要完整 URL，允许用户省略协议以提升录入速度。
   if (/^https?:\/\//i.test(trimmed)) return trimmed
   return `https://${trimmed}`
 }
@@ -328,7 +324,7 @@ function duplicateText(source?: string | null) {
 }
 
 async function checkDuplicateUrl(force = false) {
-  // 编辑模式：改的就是已存在站点，统一跳过重复检测（覆盖 blur/watch/submit 所有触发点）
+  // 编辑模式下当前站点本身一定已存在，跳过检测可以避免把自身误判为重复。
   if (isEdit.value) {
     duplicateMessage.value = ''
     return false
@@ -359,6 +355,7 @@ async function checkDuplicateUrl(force = false) {
       error?: string
     }
 
+    // 只接受最后一次请求的结果，避免网络乱序造成提示闪回。
     if (requestId !== duplicateRequestId) return false
 
     if (!data.success) {
@@ -411,7 +408,7 @@ async function handleExtract() {
     }
 
     if (data.success && data.info) {
-      // 只填充空字段，不覆盖已有内容
+      // 自动解析只补空字段，保留管理员已经手动输入的名称、描述和图标。
       if (!formData.value.name && data.info.title) {
         formData.value.name = data.info.title
       }
@@ -422,7 +419,6 @@ async function handleExtract() {
         formData.value.icon = data.info.icon
       }
 
-      // 生成图标选项
       generateIconOptions(data.info.icon)
 
       extractSuccess.value = true
@@ -430,13 +426,12 @@ async function handleExtract() {
         extractSuccess.value = false
       }, 3000)
     } else {
-      // 提取失败，至少填充基础信息
+      // 解析失败也尽量从 URL 推导可用内容，减少新增站点时的手动负担。
       if (!formData.value.name) {
         const urlObj = new URL(formData.value.url)
         formData.value.name = urlObj.hostname
       }
 
-      // 生成图标选项（无提取图标）
       generateIconOptions()
 
       if (!formData.value.icon) {
@@ -458,13 +453,12 @@ async function handleSubmit() {
   formData.value.icon = formData.value.icon?.trim() || ''
   formData.value.description = formData.value.description?.trim() || ''
 
-  // 先验证 name 和 url（更基础的必填项）
+  // 必填项先在前端拦截，重复检测仍走后端，保证和投稿/导入等入口使用同一套判重规则。
   if (!formData.value.name || !formData.value.url) {
     alert('请填写站点名称和 URL')
     return
   }
 
-  // 再验证分类
   if (!formData.value.category) {
     alert('请选择或添加一个分类')
     return
