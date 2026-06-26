@@ -50,11 +50,11 @@
           v-if="authStore.isAuthenticated && privacyStore.isUnlocked"
           type="button"
           class="btn-admin btn-vault"
-          title="密码本"
-          aria-label="密码本"
+          title="随身记录"
+          aria-label="随身记录"
           @click="showVaultModal = true"
         >
-          <AppIcon name="vault" />
+          <AppIcon name="records" />
         </button>
         <button
           v-if="authStore.isAuthenticated"
@@ -287,7 +287,7 @@ watch(() => authStore.isAuthenticated, (isAuthenticated) => {
 
 watch(() => privacyStore.isUnlocked, (isUnlocked) => {
   if (!isUnlocked) {
-    // 退出隐私模式时同步锁定密码本，清掉内存中的明文数据。
+    // 退出隐私模式时同步锁定随身记录，清掉内存中的明文数据。
     showVaultModal.value = false
     vaultStore.lock()
   }

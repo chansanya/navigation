@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS shortcuts (
 CREATE INDEX IF NOT EXISTS idx_shortcuts_sort ON shortcuts(sort DESC, id ASC);
 CREATE INDEX IF NOT EXISTS idx_shortcuts_site_id ON shortcuts(site_id);
 
--- 密码本表（只保存前端加密后的密文）
+-- 随身记录表（只保存前端加密后的密文）
 CREATE TABLE IF NOT EXISTS password_vault_entries (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   salt TEXT NOT NULL,
@@ -61,6 +61,17 @@ CREATE TABLE IF NOT EXISTS password_vault_entries (
 );
 
 CREATE INDEX IF NOT EXISTS idx_password_vault_entries_updated ON password_vault_entries(updated_at DESC, id DESC);
+
+-- API 限流表（公开抓取、登录校验等轻量防护）
+CREATE TABLE IF NOT EXISTS api_rate_limits (
+  key TEXT PRIMARY KEY,
+  window_start INTEGER NOT NULL,
+  count INTEGER NOT NULL DEFAULT 0,
+  blocked_until INTEGER NOT NULL DEFAULT 0,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_api_rate_limits_blocked_until ON api_rate_limits(blocked_until);
 
 -- 全局设置表
 CREATE TABLE IF NOT EXISTS settings (

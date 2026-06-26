@@ -70,6 +70,7 @@ npx wrangler d1 execute navigation_db --remote --file=./db/schema.sql
 
 ```bash
 npx wrangler d1 execute navigation_db --remote --file=./db/migrations/20260625_add_password_vault_entries.sql
+npx wrangler d1 execute navigation_db --remote --file=./db/migrations/20260626_add_api_rate_limits.sql
 ```
 
 当前 schema 包含：
@@ -80,10 +81,12 @@ npx wrangler d1 execute navigation_db --remote --file=./db/migrations/20260625_a
 - `shortcuts`
 - `site_submissions`
 - `password_vault_entries`
+- `api_rate_limits`
 
-运行时也会自动兜底创建 `shortcuts`、`site_submissions`、`password_vault_entries` 和 `隐私空间` 分类，但首次部署仍建议执行 `schema.sql`。
+运行时也会自动兜底创建 `shortcuts`、`site_submissions`、`password_vault_entries`、`api_rate_limits` 和 `隐私空间` 分类，但首次部署仍建议执行 `schema.sql`。
 重复 URL 检测在 API 层完成，不依赖额外唯一索引。
-从密码本版本开始，新增数据库结构都应放在 `db/migrations/` 下单独建增量脚本，线上已有库按需执行对应迁移。
+从随身记录版本开始，新增数据库结构都应放在 `db/migrations/` 下单独建增量脚本，线上已有库按需执行对应迁移。
+随身记录的账号、记录、Tab 显示设置和账号分类设置都存放在同一张密文表里，不需要额外 D1 表；账号分为普通账户和 GPT 类账户，只有普通账户维护账号分类；旧版账单密文会在解锁后自动清理。
 
 ## Cloudflare Pages 部署
 
@@ -103,16 +106,17 @@ npm run pages:deploy
 ./release.sh --deploy    # 构建并部署
 ```
 
-一次执行完整发布：
+一次执行常规发布：
 
 ```bash
 ./release.sh --all
 ```
 
-`--all` 不会自动执行 `--migrate`。已有远程数据库升级时，先明确执行迁移，再部署：
+`--all` 只会执行 `--set-env` 和 `--deploy`，不会初始化数据库，也不会自动执行 `--migrate`。已有远程数据库升级时，先明确执行迁移，再部署：
 
 ```bash
 ./release.sh --migrate --migration db/migrations/20260625_add_password_vault_entries.sql
+./release.sh --migrate --migration db/migrations/20260626_add_api_rate_limits.sql
 ./release.sh --deploy
 ```
 
@@ -122,7 +126,7 @@ npm run pages:deploy
 ./release.sh --all --project navigation --db navigation_db
 ```
 
-`--set-env` 只会设置 `ADMIN_TOKEN` 和 `PRIVATE_PASSWORD`。`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` 属于应用内 Cloudflare 项目同步功能的可选配置，需要时可在 Cloudflare Pages 控制台单独配置。
+`--set-env` 会设置 `ADMIN_TOKEN`、`PRIVATE_PASSWORD` 和已配置的 MyApp 同步变量。`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` 属于应用内 Cloudflare 项目同步功能的可选配置，需要时可在 Cloudflare Pages 控制台单独配置。
 
 在 Cloudflare Dashboard 中配置 Pages 项目：
 
@@ -147,6 +151,15 @@ Cloudflare 项目同步可选：
 
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
+
+MyApp 随身记录同步可选：
+
+- `MYAPP_BASE_URL`
+- `MYAPP_EXPORT_KEY`
+- `MYAPP_PAYLOAD_KEY_PREFIX`，默认兼容 `myapp-export-payload-v1:`
+- `MYAPP_SYNC_SOURCE`，默认 `navigation`，用于 MyApp 被动同步来源标识
+
+拉取同步适配 MyApp `schemaVersion = 4` 导出结构，主路径读取 `notes`、`accounts`，账户 `accountType` 会保存为账号分类；旧版 `codeAccounts` 仅作为兼容 fallback。同步到 MyApp 时，会先调用 MyApp 被动同步预检接口，用户确认选中的新增、更新或冲突项后再写入。
 
 建议 `ADMIN_TOKEN` 和隐私模式密钥使用不同的高强度字符串。修改生产环境变量后，需要重新部署或重新启动 Pages Functions 运行环境后生效。
 

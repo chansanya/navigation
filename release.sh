@@ -6,7 +6,7 @@ PROJECT_NAME=""
 DB_NAME=""
 ENV_FILE=".dev.vars"
 SCHEMA_FILE="db/schema.sql"
-MIGRATION_FILE="db/migrations/20260625_add_password_vault_entries.sql"
+MIGRATION_FILE="db/migrations/20260626_add_api_rate_limits.sql"
 DIST_DIR="dist"
 RUN_INIT_DB=0
 RUN_MIGRATE_DB=0
@@ -24,14 +24,14 @@ print_help() {
   --migrate          执行单独的远程 D1 增量迁移脚本
   --set-env          读取 .dev.vars 并设置必要的 Pages 远程环境变量
   --deploy           构建并部署到 Cloudflare Pages
-  --all              依次执行 --init-db、--set-env、--deploy，不自动执行 --migrate
+  --all              依次执行 --set-env、--deploy；初始化数据库必须显式执行 --init-db
 
 参数:
   --project <name>   Pages 项目名，默认读取 wrangler.toml 的 name
   --db <name>        D1 数据库名，默认读取 wrangler.toml 的 database_name
   --env-file <path>  环境变量文件，默认 .dev.vars
   --schema <path>    数据库 schema 文件，默认 db/schema.sql
-  --migration <path> 增量迁移 SQL 文件，默认 db/migrations/20260625_add_password_vault_entries.sql
+  --migration <path> 增量迁移 SQL 文件，默认 db/migrations/20260626_add_api_rate_limits.sql
   --yes              跳过确认
   --help             显示帮助信息
 
@@ -45,7 +45,7 @@ print_help() {
 
 说明:
   .dev.vars 不会提交到仓库；示例文件是 .dev.vars.example。
-  只设置 ADMIN_TOKEN 和 PRIVATE_PASSWORD，不会打印变量值。
+  会设置 ADMIN_TOKEN、PRIVATE_PASSWORD 和已配置的 MyApp 同步变量，不会打印变量值。
 EOF
 }
 
@@ -161,6 +161,10 @@ set_remote_env() {
 
   set_pages_secret ADMIN_TOKEN
   set_pages_secret PRIVATE_PASSWORD
+  set_pages_secret MYAPP_BASE_URL
+  set_pages_secret MYAPP_EXPORT_KEY
+  set_pages_secret MYAPP_PAYLOAD_KEY_PREFIX
+  set_pages_secret MYAPP_SYNC_SOURCE
 }
 
 deploy_pages() {
@@ -195,8 +199,7 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --all)
-      # --all 面向首次发布或常规发布，不自动跑迁移，迁移必须显式声明。
-      RUN_INIT_DB=1
+      # --all 面向常规发布；初始化和迁移都必须显式声明，避免误操作线上 D1。
       RUN_SET_ENV=1
       RUN_DEPLOY=1
       shift

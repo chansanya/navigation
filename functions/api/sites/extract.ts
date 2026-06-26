@@ -1,7 +1,20 @@
 // POST /api/sites/extract - 从 URL 自动提取站点信息
 
+import { consumeRateLimit, normalizeUrlInput } from '../../db'
+import {
+  HttpError,
+  createErrorResponse,
+  createRateLimitResponse,
+  createRateLimitKey,
+  fetchWithValidatedRedirects,
+  normalizePublicHttpUrl,
+  readLimitedRequestJson,
+  readLimitedResponseText,
+  resolvePublicHttpUrl
+} from '../../security'
+
 interface Env {
-  // 不需要认证，任何人都能用
+  DB: D1Database
 }
 
 interface ExtractedInfo {
@@ -10,137 +23,144 @@ interface ExtractedInfo {
   icon?: string
 }
 
-/**
- * 验证图标是否可访问
- */
-async function validateIcon(iconUrl: string): Promise<boolean> {
+const requestMaxBytes = 2048
+const htmlMaxBytes = 256 * 1024
+const fetchTimeoutMs = 5000
+const iconTimeoutMs = 3000
+const publicRateLimit = {
+  limit: 30,
+  windowMs: 10 * 60 * 1000,
+  blockMs: 10 * 60 * 1000
+}
+
+function truncateText(value: string, maxLength: number) {
+  return value.trim().replace(/\s+/g, ' ').slice(0, maxLength)
+}
+
+function isHtmlResponse(response: Response) {
+  const contentType = response.headers.get('Content-Type')
+  return !contentType
+    || contentType.toLowerCase().includes('text/html')
+    || contentType.toLowerCase().includes('application/xhtml+xml')
+}
+
+function isImageResponse(response: Response) {
+  const contentType = response.headers.get('Content-Type')
+  return !contentType || contentType.toLowerCase().startsWith('image/')
+}
+
+async function validateIcon(iconUrl: URL): Promise<boolean> {
   try {
-    // 先 HEAD 探测图标，避免把无法访问的 favicon 写入站点或投稿。
-    const response = await fetch(iconUrl, {
+    const { response } = await fetchWithValidatedRedirects(iconUrl, {
       method: 'HEAD',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      signal: AbortSignal.timeout(3000) // 3秒超时
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+      }
+    }, {
+      timeoutMs: iconTimeoutMs,
+      maxRedirects: 2
     })
-    // 200-299 和 304 都认为是成功
-    return response.ok || response.status === 304
-  } catch (error) {
+
+    return (response.ok || response.status === 304) && isImageResponse(response)
+  } catch {
     return false
   }
 }
 
-export const onRequestPost: PagesFunction<Env> = async (context) => {
-  try {
-    const { url } = await context.request.json() as { url: string }
+function getIconCandidates(html: string, pageUrl: URL) {
+  const candidates: URL[] = []
+  const iconMatch = html.match(/<link[^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)["'][^>]*href=["']([^"']+)["']/i)
 
-    if (!url) {
-      return Response.json({
-        success: false,
-        error: 'URL is required'
-      }, { status: 400 })
-    }
-
-    // 验证 URL 格式
-    let parsedUrl: URL
+  if (iconMatch) {
     try {
-      parsedUrl = new URL(url)
+      candidates.push(resolvePublicHttpUrl(iconMatch[1], pageUrl))
     } catch {
-      return Response.json({
-        success: false,
-        error: 'Invalid URL format'
-      }, { status: 400 })
+      // 页面声明的图标地址不可信，忽略后继续尝试默认 favicon。
     }
+  }
 
+  candidates.push(resolvePublicHttpUrl('/favicon.ico', pageUrl))
+  candidates.push(normalizePublicHttpUrl(`https://www.google.com/s2/favicons?domain=${pageUrl.hostname}&sz=128`))
+
+  return candidates
+}
+
+async function getFirstValidIcon(html: string, pageUrl: URL) {
+  for (const candidate of getIconCandidates(html, pageUrl)) {
+    if (await validateIcon(candidate)) {
+      return candidate.toString()
+    }
+  }
+
+  return `https://www.google.com/s2/favicons?domain=${pageUrl.hostname}&sz=128`
+}
+
+async function enforceRateLimit(context: EventContext<Env, string, Record<string, unknown>>) {
+  const key = await createRateLimitKey('sites_extract', context.request)
+  const result = await consumeRateLimit(context.env.DB, key, publicRateLimit)
+  if (!result.allowed) {
+    return createRateLimitResponse(result.retryAfterSeconds)
+  }
+
+  return null
+}
+
+export const onRequestPost: PagesFunction<Env> = async (context) => {
+  const rateLimitResponse = await enforceRateLimit(context)
+  if (rateLimitResponse) return rateLimitResponse
+
+  try {
+    const body = await readLimitedRequestJson(context.request, requestMaxBytes)
+    const targetUrl = normalizePublicHttpUrl(normalizeUrlInput(body.url))
     const info: ExtractedInfo = {}
 
     try {
-      // 抓取页面内容（设置 5 秒超时）
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 5000)
-
-      const response = await fetch(url, {
+      const { response, url: finalUrl } = await fetchWithValidatedRedirects(targetUrl, {
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        },
-        signal: controller.signal
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml'
+        }
+      }, {
+        timeoutMs: fetchTimeoutMs,
+        maxRedirects: 3
       })
 
-      clearTimeout(timeoutId)
-
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
+        throw new HttpError(400, `HTTP ${response.status}`)
       }
 
-      const html = await response.text()
+      if (!isHtmlResponse(response)) {
+        throw new HttpError(415, '目标不是 HTML 页面')
+      }
 
-      // 提取标题
+      const html = await readLimitedResponseText(response, htmlMaxBytes)
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i)
-      if (titleMatch) {
-        info.title = titleMatch[1].trim()
-      }
-
-      // 提取 meta description
       const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i)
+
+      if (titleMatch) {
+        info.title = truncateText(titleMatch[1], 120)
+      }
+
       if (descMatch) {
-        info.description = descMatch[1].trim()
+        info.description = truncateText(descMatch[1], 300)
       }
 
-      // 提取 favicon - 收集所有候选，按页面声明、默认 favicon、Google 兜底依次尝试。
-      const iconCandidates: string[] = []
-
-      // 1. link[rel="icon"]
-      const iconMatch = html.match(/<link[^>]*rel=["'](?:icon|shortcut icon)["'][^>]*href=["']([^"']+)["']/i)
-      if (iconMatch) {
-        const iconUrl = iconMatch[1]
-        // 处理相对路径
-        if (iconUrl.startsWith('http')) {
-          iconCandidates.push(iconUrl)
-        } else if (iconUrl.startsWith('//')) {
-          iconCandidates.push(`${parsedUrl.protocol}${iconUrl}`)
-        } else if (iconUrl.startsWith('/')) {
-          iconCandidates.push(`${parsedUrl.origin}${iconUrl}`)
-        } else {
-          iconCandidates.push(`${parsedUrl.origin}/${iconUrl}`)
-        }
-      }
-
-      // 2. 默认 favicon.ico
-      iconCandidates.push(`${parsedUrl.origin}/favicon.ico`)
-
-      // 3. Google Favicon API 作为最终降级
-      iconCandidates.push(`https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=128`)
-
-      // 逐个验证图标，找到第一个可用的
-      for (const candidate of iconCandidates) {
-        const isValid = await validateIcon(candidate)
-        if (isValid) {
-          info.icon = candidate
-          break
-        }
-      }
-
-      // 如果所有验证都失败，使用 Google API（最可靠）
-      if (!info.icon) {
-        info.icon = `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=128`
-      }
-
+      info.icon = await getFirstValidIcon(html, finalUrl)
     } catch (error) {
-      // 抓取失败，返回基础信息
-      // 外部页面超时或拒绝访问时仍给前端一个可编辑的默认结果。
-      info.title = parsedUrl.hostname
-      info.icon = `https://www.google.com/s2/favicons?domain=${parsedUrl.hostname}&sz=128`
+      if (error instanceof HttpError && (error.status === 413 || error.status === 415)) {
+        throw error
+      }
+
+      info.title = targetUrl.hostname
+      info.icon = `https://www.google.com/s2/favicons?domain=${targetUrl.hostname}&sz=128`
     }
 
     return Response.json({
       success: true,
       info
     })
-
   } catch (error) {
-    return Response.json({
-      success: false,
-      error: 'Failed to extract site info'
-    }, { status: 500 })
+    return createErrorResponse(error, 'Failed to extract site info')
   }
 }

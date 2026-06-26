@@ -47,6 +47,24 @@ interface VaultEntry {
   updated_at?: string
 }
 
+interface RateLimitRow {
+  key: string
+  window_start: number
+  count: number
+  blocked_until: number
+}
+
+interface RateLimitOptions {
+  limit: number
+  windowMs: number
+  blockMs: number
+}
+
+export interface RateLimitResult {
+  allowed: boolean
+  retryAfterSeconds: number
+}
+
 export const PRIVATE_CATEGORY_NAME = '隐私空间'
 
 export function isPrivateCategory(category?: string | null) {
@@ -151,6 +169,110 @@ export async function ensurePrivateCategory(db: D1Database) {
   await db.prepare('INSERT OR IGNORE INTO categories (name, sort) VALUES (?, -100)').bind(PRIVATE_CATEGORY_NAME).run()
 }
 
+export async function ensureRateLimitTable(db: D1Database) {
+  await db.prepare(`
+    CREATE TABLE IF NOT EXISTS api_rate_limits (
+      key TEXT PRIMARY KEY,
+      window_start INTEGER NOT NULL,
+      count INTEGER NOT NULL DEFAULT 0,
+      blocked_until INTEGER NOT NULL DEFAULT 0,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `).run()
+  await db.prepare('CREATE INDEX IF NOT EXISTS idx_api_rate_limits_blocked_until ON api_rate_limits(blocked_until)').run()
+}
+
+async function getRateLimitRow(db: D1Database, key: string) {
+  await ensureRateLimitTable(db)
+  const row = await db.prepare('SELECT * FROM api_rate_limits WHERE key = ?').bind(key).first()
+  return row as unknown as RateLimitRow | null
+}
+
+function retryAfterSeconds(blockedUntil: number) {
+  return Math.max(1, Math.ceil((blockedUntil - Date.now()) / 1000))
+}
+
+async function upsertRateLimitRow(db: D1Database, key: string, windowStart: number, count: number, blockedUntil: number) {
+  await db.prepare(`
+    INSERT INTO api_rate_limits (key, window_start, count, blocked_until)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(key) DO UPDATE SET
+      window_start = excluded.window_start,
+      count = excluded.count,
+      blocked_until = excluded.blocked_until,
+      updated_at = CURRENT_TIMESTAMP
+  `).bind(key, windowStart, count, blockedUntil).run()
+}
+
+export async function consumeRateLimit(db: D1Database, key: string, options: RateLimitOptions): Promise<RateLimitResult> {
+  const now = Date.now()
+  const row = await getRateLimitRow(db, key)
+
+  if (row && row.blocked_until > now) {
+    return {
+      allowed: false,
+      retryAfterSeconds: retryAfterSeconds(row.blocked_until)
+    }
+  }
+
+  const inWindow = Boolean(row && now - row.window_start < options.windowMs)
+  const windowStart = inWindow && row ? row.window_start : now
+  const count = inWindow && row ? row.count + 1 : 1
+  const blockedUntil = count > options.limit ? now + options.blockMs : 0
+
+  await upsertRateLimitRow(db, key, windowStart, count, blockedUntil)
+
+  return {
+    allowed: blockedUntil === 0,
+    retryAfterSeconds: blockedUntil ? retryAfterSeconds(blockedUntil) : 0
+  }
+}
+
+export async function checkRateLimitBlock(db: D1Database, key: string): Promise<RateLimitResult> {
+  const row = await getRateLimitRow(db, key)
+
+  if (row && row.blocked_until > Date.now()) {
+    return {
+      allowed: false,
+      retryAfterSeconds: retryAfterSeconds(row.blocked_until)
+    }
+  }
+
+  return {
+    allowed: true,
+    retryAfterSeconds: 0
+  }
+}
+
+export async function recordRateLimitFailure(db: D1Database, key: string, options: RateLimitOptions): Promise<RateLimitResult> {
+  const now = Date.now()
+  const row = await getRateLimitRow(db, key)
+
+  if (row && row.blocked_until > now) {
+    return {
+      allowed: false,
+      retryAfterSeconds: retryAfterSeconds(row.blocked_until)
+    }
+  }
+
+  const inWindow = Boolean(row && now - row.window_start < options.windowMs)
+  const windowStart = inWindow && row ? row.window_start : now
+  const count = inWindow && row ? row.count + 1 : 1
+  const blockedUntil = count >= options.limit ? now + options.blockMs : 0
+
+  await upsertRateLimitRow(db, key, windowStart, count, blockedUntil)
+
+  return {
+    allowed: blockedUntil === 0,
+    retryAfterSeconds: blockedUntil ? retryAfterSeconds(blockedUntil) : 0
+  }
+}
+
+export async function clearRateLimit(db: D1Database, key: string) {
+  await ensureRateLimitTable(db)
+  await db.prepare('DELETE FROM api_rate_limits WHERE key = ?').bind(key).run()
+}
+
 interface Settings {
   siteTitle: string
   siteLogo: string
@@ -243,7 +365,7 @@ async function ensureShortcutsTable(db: D1Database) {
 }
 
 export async function ensureVaultTable(db: D1Database) {
-  // 密码本只保存浏览器端加密后的密文材料，服务端不接触明文账号或密码。
+  // 随身记录只保存浏览器端加密后的密文材料，服务端不接触明文账号或记录。
   await db.prepare(`
     CREATE TABLE IF NOT EXISTS password_vault_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

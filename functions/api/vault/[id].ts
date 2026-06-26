@@ -1,5 +1,5 @@
-// PUT /api/vault/:id - 更新加密密码本条目
-// DELETE /api/vault/:id - 删除加密密码本条目
+// PUT /api/vault/:id - 更新加密随身记录条目
+// DELETE /api/vault/:id - 删除加密随身记录条目
 
 import { deleteVaultEntry, getVaultEntryById, updateVaultEntry } from '../../db'
 
@@ -8,7 +8,7 @@ interface Env {
 }
 
 function requireVaultAccess(context: EventContext<Env, string, Record<string, unknown>>) {
-  // 修改和删除密码本记录同样要求双重门槛：管理认证 + 隐私模式。
+  // 修改和删除随身记录同样要求双重门槛：管理认证 + 隐私模式。
   if (!context.data.isAuthenticated) {
     return Response.json({
       success: false,
@@ -34,7 +34,7 @@ function parseEntryId(value: string | string[] | undefined) {
 }
 
 function normalizeEncryptedField(value: unknown, maxLength: number) {
-  // API 不校验明文字段，因为服务端永远不应看到明文密码本内容。
+  // API 不校验明文字段，因为服务端永远不应看到随身记录明文内容。
   if (typeof value !== 'string') return ''
   return value.trim().slice(0, maxLength)
 }

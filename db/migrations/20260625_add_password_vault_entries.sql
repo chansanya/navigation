@@ -1,4 +1,4 @@
--- Add encrypted password vault storage.
+-- Add encrypted personal records storage.
 -- Safe to run repeatedly; it does not delete or modify existing data.
 
 CREATE TABLE IF NOT EXISTS password_vault_entries (

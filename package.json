@@ -6,7 +6,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "pages:dev": "wrangler pages dev dist --compatibility-date=2024-01-01",
+    "pages:dev": "wrangler pages dev dist --compatibility-date=2026-06-26",
     "pages:deploy": "wrangler pages deploy dist --project-name=navigation",
     "release": "bash release.sh --deploy",
     "export:local-db": "node scripts/export-local-sqlite.js",

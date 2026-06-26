@@ -1,67 +1,103 @@
 // GET /api/icon-proxy?url=<图标URL> - 代理图标请求，绕过防盗链
 
+import { consumeRateLimit } from '../db'
+import {
+  HttpError,
+  createErrorResponse,
+  createRateLimitResponse,
+  createRateLimitKey,
+  fetchWithValidatedRedirects,
+  normalizePublicHttpUrl,
+  readLimitedResponseBytes
+} from '../security'
+
 interface Env {
-  // 可以添加缓存相关配置
+  DB: D1Database
+}
+
+const iconMaxBytes = 256 * 1024
+const iconTimeoutMs = 5000
+const publicRateLimit = {
+  limit: 30,
+  windowMs: 10 * 60 * 1000,
+  blockMs: 10 * 60 * 1000
+}
+
+function isImageResponse(response: Response) {
+  const contentType = response.headers.get('Content-Type')
+  return Boolean(contentType && contentType.toLowerCase().startsWith('image/'))
+}
+
+async function fetchIconBytes(iconUrl: URL) {
+  const { response } = await fetchWithValidatedRedirects(iconUrl, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+      'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+      'Cache-Control': 'no-cache'
+    }
+  }, {
+    timeoutMs: iconTimeoutMs,
+    maxRedirects: 3
+  })
+
+  if (!response.ok) {
+    throw new HttpError(404, '图标加载失败')
+  }
+
+  if (!isImageResponse(response)) {
+    throw new HttpError(415, '目标不是图片')
+  }
+
+  return {
+    bytes: await readLimitedResponseBytes(response, iconMaxBytes),
+    contentType: response.headers.get('Content-Type') || 'image/x-icon'
+  }
+}
+
+async function enforceRateLimit(context: EventContext<Env, string, Record<string, unknown>>) {
+  const key = await createRateLimitKey('icon_proxy', context.request)
+  const result = await consumeRateLimit(context.env.DB, key, publicRateLimit)
+  if (!result.allowed) {
+    return createRateLimitResponse(result.retryAfterSeconds)
+  }
+
+  return null
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
-  const url = new URL(context.request.url)
-  const iconUrl = url.searchParams.get('url')
-
-  if (!iconUrl) {
-    return Response.json({
-      success: false,
-      error: 'Missing url parameter'
-    }, { status: 400 })
-  }
+  const rateLimitResponse = await enforceRateLimit(context)
+  if (rateLimitResponse) return rateLimitResponse
 
   try {
-    // 请求原始图标，关键：不带 Referer 和 Origin
-    // 一些站点会根据 Referer 防盗链，代理请求可以提升 favicon 成功率。
-    const response = await fetch(iconUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
-        'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
-        'Cache-Control': 'no-cache'
-      }
-    })
+    const url = new URL(context.request.url)
+    const iconUrl = normalizePublicHttpUrl(url.searchParams.get('url') || '')
 
-    if (!response.ok) {
-      // 图标加载失败，返回默认图标或使用第三方服务
-      // DuckDuckGo 的 ip3 服务作为兜底，不需要解析页面 HTML。
-      const domain = new URL(iconUrl).hostname
-      const fallbackUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`
-
-      const fallbackResponse = await fetch(fallbackUrl)
-      if (fallbackResponse.ok) {
-        return new Response(fallbackResponse.body, {
-          headers: {
-            'Content-Type': fallbackResponse.headers.get('Content-Type') || 'image/x-icon',
-            'Cache-Control': 'public, max-age=86400', // 缓存1天
-            'Access-Control-Allow-Origin': '*'
-          }
-        })
+    try {
+      const icon = await fetchIconBytes(iconUrl)
+      return new Response(icon.bytes, {
+        headers: {
+          'Content-Type': icon.contentType,
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
+    } catch (error) {
+      if (error instanceof HttpError && error.status !== 404) {
+        throw error
       }
 
-      return new Response(null, { status: 404 })
+      const fallbackUrl = normalizePublicHttpUrl(`https://icons.duckduckgo.com/ip3/${iconUrl.hostname}.ico`)
+      const fallbackIcon = await fetchIconBytes(fallbackUrl)
+      return new Response(fallbackIcon.bytes, {
+        headers: {
+          'Content-Type': fallbackIcon.contentType,
+          'Cache-Control': 'public, max-age=86400',
+          'Access-Control-Allow-Origin': '*'
+        }
+      })
     }
-
-    // 返回图标，添加缓存头
-    // favicon 变化频率低，缓存一天可减少边缘函数请求量。
-    return new Response(response.body, {
-      headers: {
-        'Content-Type': response.headers.get('Content-Type') || 'image/x-icon',
-        'Cache-Control': 'public, max-age=86400', // 缓存1天
-        'Access-Control-Allow-Origin': '*'
-      }
-    })
-
-  } catch (error: any) {
-    console.error('Icon proxy error:', error)
-    return Response.json({
-      success: false,
-      error: 'Failed to fetch icon'
-    }, { status: 500 })
+  } catch (error) {
+    return createErrorResponse(error, 'Failed to fetch icon')
   }
 }

@@ -554,6 +554,9 @@ watch(pageCount, () => {
 }
 
 .bookmark-modal {
+  --bookmark-scrollbar-track: rgba(15, 23, 42, 0.04);
+  --bookmark-scrollbar-thumb: rgba(102, 126, 234, 0.3);
+  --bookmark-scrollbar-thumb-hover: rgba(102, 126, 234, 0.52);
   width: min(100%, 920px);
   max-height: 86vh;
   background: white;
@@ -596,6 +599,32 @@ watch(pageCount, () => {
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-lg);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bookmark-scrollbar-thumb) transparent;
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  margin: 10px 0;
+  border-radius: 999px;
+  background: var(--bookmark-scrollbar-track);
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  min-height: 48px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--bookmark-scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: var(--bookmark-scrollbar-thumb-hover);
+  background-clip: padding-box;
 }
 
 .upload-zone {

@@ -1,5 +1,5 @@
-// GET /api/vault - 获取加密密码本条目
-// POST /api/vault - 创建加密密码本条目
+// GET /api/vault - 获取加密随身记录条目
+// POST /api/vault - 创建加密随身记录条目
 
 import { createVaultEntry, getVaultEntries } from '../../db'
 
@@ -8,7 +8,7 @@ interface Env {
 }
 
 function requireVaultAccess(context: EventContext<Env, string, Record<string, unknown>>) {
-  // 密码本比普通管理功能更敏感，必须同时满足管理认证和隐私模式解锁。
+  // 随身记录比普通管理功能更敏感，必须同时满足管理认证和隐私模式解锁。
   if (!context.data.isAuthenticated) {
     return Response.json({
       success: false,

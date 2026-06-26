@@ -23,7 +23,7 @@ export const usePrivacyStore = defineStore('privacy', () => {
   async function verifyPassword(password: string): Promise<boolean> {
     try {
       clearLegacyPrivacyStorage()
-      // 隐私密码只用于解锁隐私分类和密码本入口，不等同于管理认证。
+      // 隐私密码只用于解锁隐私分类和随身记录入口，不等同于管理认证。
       const response = await fetch('/api/privacy/verify', {
         method: 'POST',
         credentials: 'same-origin',

@@ -11,3 +11,4 @@ wrangler.toml
 !wrangler.toml.example
 wrangler.toml.local
 scripts/sql/*.sql
+guide/

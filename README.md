@@ -28,6 +28,7 @@
 
 - [快速上手](docs/QUICKSTART.md)
 - [部署指南](docs/DEPLOY.md)
+- [本版本待发布事项](RELEASE_TODO.md)
 
 ## 快速开始
 
@@ -89,13 +90,16 @@ npm run pages:deploy
 
 ```bash
 ./release.sh --migrate --migration db/migrations/20260625_add_password_vault_entries.sql
+./release.sh --migrate --migration db/migrations/20260626_add_api_rate_limits.sql
 ```
 
-完整发布：
+常规发布：
 
 ```bash
 ./release.sh --all
 ```
+
+`--all` 只会执行环境变量设置和部署，不会初始化数据库，也不会自动执行迁移。
 
 导出本地 D1 SQLite 数据为可导入 SQL：
 
@@ -122,6 +126,7 @@ npm run sync:local-db
 - 环境变量：`ADMIN_TOKEN`
 - 可选隐私密码：`PRIVATE_PASSWORD`
 - 可选 Cloudflare 同步：`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`
+- 可选 MyApp 同步：`MYAPP_BASE_URL`、`MYAPP_EXPORT_KEY`、`MYAPP_PAYLOAD_KEY_PREFIX`、`MYAPP_SYNC_SOURCE`
 
 ## 密钥说明
 
@@ -136,7 +141,7 @@ npm run sync:local-db
 - `settings`：全局设置和预设
 - `shortcuts`：搜索主页快捷方式
 - `site_submissions`：公开投稿，审核通过后复制进 `sites`
-- `password_vault_entries`：密码本密文数据
+- `password_vault_entries`：随身记录密文数据
 
 ## 使用说明
 
@@ -163,7 +168,13 @@ npm run sync:local-db
 - 输入 `PRIVATE_PASSWORD`
 - 解锁后会显示 `隐私空间` 分类和 `退出隐私模式`
 - 只有隐私模式下才能查看、添加、编辑、删除隐私空间站点
-- 管理认证且进入隐私模式后，可打开密码本；密码本只在浏览器端解密，D1 只保存密文
+- 管理认证且进入隐私模式后，可打开随身记录；随身记录只在浏览器端解密，D1 只保存密文
+- 随身记录支持账号、记录两类内容；账号分为普通账户和 GPT 类账户，只有普通账户维护账号分类；旧版账单密文会在解锁后自动清理
+- 随身记录的 Tab 显示/隐藏和账号分类设置会作为加密内部记录保存，可跨设备同步
+- 随身记录可通过后端环境变量配置的 MyApp 地址、导出 Key、payload key 前缀和同步来源同步数据，同步前会先预览并选择记录
+- MyApp 同步会按来源标记更新已有记录，兼容旧版去前缀 source id，避免重复导入同一条数据
+- MyApp 拉取适配 `schemaVersion = 4`，主路径读取 `notes`、`accounts`；`accounts[].fields.accountType` 会保存为账号分类，旧版 `codeAccounts` 仅作为兼容 fallback
+- 随身记录也支持“同步到 MyApp”：本地账号和记录会先提交到 MyApp 被动同步预检，确认选中的新增、更新或冲突项后才写入 MyApp
 
 ## API 概览
 
@@ -178,6 +189,8 @@ npm run sync:local-db
 - `POST /api/submissions`
 - `POST /api/privacy/verify`
 - `GET /api/icon-proxy`
+
+公开抓取相关端点会限制 URL、响应大小、内容类型和请求频率，可能返回 `400`、`413`、`415` 或 `429`。
 
 管理端点：
 
@@ -198,8 +211,12 @@ npm run sync:local-db
 - `POST /api/vault`
 - `PUT /api/vault/:id`
 - `DELETE /api/vault/:id`
+- `POST /api/integrations/myapp/sync`
+- `POST /api/integrations/myapp/passive/preview`
+- `POST /api/integrations/myapp/passive/confirm`
 
 管理员登录和隐私模式都使用服务端签名的 `HttpOnly` Cookie，会话密钥不会写入 localStorage 或 sessionStorage。
+管理员令牌、隐私密码、公开自动解析和图标代理均有 D1 轻量限流保护。
 
 URL 重复检测会规范化 http/https URL，忽略末尾 `/`、域名大小写和默认端口差异。
 
