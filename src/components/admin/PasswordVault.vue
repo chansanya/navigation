@@ -49,6 +49,17 @@
               <AppIcon name="search" :size="16" />
               <input v-model="searchQuery" type="search" placeholder="搜索记录" autocomplete="off" />
             </div>
+            <div class="vault-actions">
+            <button
+              class="vault-icon-button"
+              type="button"
+              title="刷新列表"
+              aria-label="刷新列表"
+              :disabled="refreshing"
+              @click="handleRefresh"
+            >
+              <AppIcon name="refresh" :size="18" :class="{ spinning: refreshing }" />
+            </button>
             <button class="vault-icon-button" type="button" title="Tab 显示设置" @click="showTabSettings = !showTabSettings">
               <AppIcon name="filter" :size="18" />
             </button>
@@ -61,6 +72,7 @@
             <button class="vault-icon-button" type="button" title="锁定" @click="vaultStore.lock">
               <AppIcon name="auth" :size="17" />
             </button>
+            </div>
           </div>
 
           <div class="vault-tabs">
@@ -143,9 +155,9 @@
             </button>
           </div>
 
-          <div class="vault-list">
+          <div ref="listRef" class="vault-list">
             <button
-              v-for="item in filteredItems"
+              v-for="item in visibleItems"
               :key="item.id"
               class="vault-item"
               :class="{ active: item.id === selectedItemId }"
@@ -162,6 +174,8 @@
             <div v-if="filteredItems.length === 0" class="vault-empty">
               {{ searchQuery.trim() ? '无匹配记录' : `暂无${activeTabLabel}` }}
             </div>
+            <div v-else-if="hasMore" ref="sentinelRef" class="vault-list-sentinel">加载中…</div>
+            <div v-else class="vault-list-end">共 {{ filteredItems.length }} 条记录</div>
           </div>
         </aside>
 
@@ -480,7 +494,7 @@
                     :class="{ active: form.accountKind === 'gpt' }"
                     @click="setFormAccountKind('gpt')"
                   >
-                    GPT 类账户
+                    GPT 账户
                   </button>
                 </div>
               </label>
@@ -599,7 +613,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import AppIcon from '@/components/common/AppIcon.vue'
 import {
   useVaultStore,
@@ -755,7 +769,7 @@ const activeTabLabel = computed(() => getRecordTypeLabel(activeTab.value))
 const accountKindOptions = computed<Array<{ value: AccountKindFilter; label: string }>>(() => [
   { value: 'all', label: '全部账号' },
   { value: 'normal', label: '普通账户' },
-  { value: 'gpt', label: 'GPT 类账户' }
+  { value: 'gpt', label: 'GPT 账户' }
 ])
 
 const accountCategoryOptions = computed(() => {
@@ -791,6 +805,51 @@ const filteredItems = computed(() => {
   if (!keyword) return records
 
   return records.filter((item) => searchRecord(item, keyword))
+})
+
+// 列表前端分页 + 手动刷新（数据全量在内存，仅切片渲染）
+const PAGE_SIZE = 50
+const visibleCount = ref(PAGE_SIZE)
+const refreshing = ref(false)
+const listRef = ref<HTMLElement | null>(null)
+const sentinelRef = ref<HTMLElement | null>(null)
+let listObserver: IntersectionObserver | null = null
+
+const visibleItems = computed(() => filteredItems.value.slice(0, visibleCount.value))
+const hasMore = computed(() => visibleCount.value < filteredItems.value.length)
+
+// 过滤/搜索/切换条件变化时回到首页
+watch(filteredItems, () => {
+  visibleCount.value = PAGE_SIZE
+})
+
+async function handleRefresh() {
+  if (refreshing.value) return
+  refreshing.value = true
+  try {
+    await vaultStore.refresh()
+    visibleCount.value = PAGE_SIZE
+  } finally {
+    refreshing.value = false
+  }
+}
+
+function bindListObserver() {
+  if (!listRef.value) return
+  listObserver?.disconnect()
+  listObserver = new IntersectionObserver((entries) => {
+    if (entries.some((entry) => entry.isIntersecting) && hasMore.value) {
+      visibleCount.value += PAGE_SIZE
+    }
+  }, { root: listRef.value, rootMargin: '120px' })
+  if (sentinelRef.value) listObserver.observe(sentinelRef.value)
+}
+
+watch([listRef, sentinelRef], bindListObserver, { flush: 'post' })
+
+onUnmounted(() => {
+  listObserver?.disconnect()
+  listObserver = null
 })
 
 const selectedItem = computed(() => {
@@ -1108,7 +1167,7 @@ function getAccountKind(item: Extract<VaultRecord, { type: 'account' }>): VaultA
 }
 
 function getAccountKindLabel(item: Extract<VaultRecord, { type: 'account' }>) {
-  return getAccountKind(item) === 'gpt' ? 'GPT 类账户' : '普通账户'
+  return getAccountKind(item) === 'gpt' ? 'GPT 账户' : '普通账户'
 }
 
 function getAccountCategoryLabel(item: Extract<VaultRecord, { type: 'account' }>) {
@@ -1128,7 +1187,8 @@ function getRecordSubtitle(item: VaultRecord) {
 }
 
 function getListRecordSubtitle(item: VaultRecord) {
-  if (item.type === 'account') return ''
+  // 账户显示类型描述（普通/GPT + 分类），便于区分同一邮箱的多条账户
+  if (item.type === 'account') return getAccountDisplayType(item)
   return item.detail || item.summary || ''
 }
 
@@ -1569,7 +1629,7 @@ function getPassiveAccountKind(change: PassiveSyncChange): VaultAccountKind | ''
 }
 
 function getPassiveAccountKindLabel(change: PassiveSyncChange) {
-  return getPassiveAccountKind(change) === 'gpt' ? 'GPT 类账户' : '普通账户'
+  return getPassiveAccountKind(change) === 'gpt' ? 'GPT 账户' : '普通账户'
 }
 
 function getPassiveAccountCategory(change: PassiveSyncChange) {
@@ -2031,20 +2091,27 @@ function generatePassword() {
 .vault-toolbar {
   padding: var(--spacing-md);
   display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.vault-actions {
+  display: flex;
+  justify-content: flex-end;
   gap: var(--spacing-sm);
 }
 
 .vault-search {
   min-width: 0;
   flex: 1;
-  height: 38px;
-  padding: 0 10px;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(15, 23, 42, 0.1);
   border-radius: var(--radius-md);
-  background: rgba(15, 23, 42, 0.06);
-  color: #374151;
+  background: rgba(15, 23, 42, 0.04);
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--spacing-sm);
 }
 
 .vault-search input,
@@ -2239,6 +2306,24 @@ function generatePassword() {
   flex: 1;
   padding: 0 var(--spacing-md) var(--spacing-md);
   overflow-y: auto;
+}
+
+.vault-list-sentinel,
+.vault-list-end {
+  padding: var(--spacing-sm) 0;
+  text-align: center;
+  font-size: 12px;
+  opacity: 0.6;
+}
+
+.spinning {
+  animation: vault-spin 0.8s linear infinite;
+}
+
+@keyframes vault-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .vault-item {

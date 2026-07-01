@@ -559,6 +559,24 @@ export const useVaultStore = defineStore('vault', () => {
     error.value = ''
   }
 
+  async function refresh(): Promise<boolean> {
+    // 仅在已解锁时可用：重拉密文，用内存中的主密码重新解密，无需再次输入。
+    if (!unlocked.value || !masterPassword.value) return false
+    const loaded = await fetchEntries()
+    if (!loaded) return false
+    try {
+      const decryptedPayloads = await Promise.all(
+        encryptedEntries.value.map((entry) => decryptEntry(entry, masterPassword.value))
+      )
+      applyDecryptedPayloads(decryptedPayloads)
+      return true
+    } catch (err) {
+      console.error('Failed to refresh records:', err)
+      error.value = '刷新失败，数据未能解密'
+      return false
+    }
+  }
+
   async function postEncryptedPayload(payload: VaultRecord | VaultSettingsPayload) {
     const encrypted = await encryptPayload(payload)
     const response = await fetch('/api/vault', {
@@ -829,6 +847,7 @@ export const useVaultStore = defineStore('vault', () => {
     error,
     hasEntries,
     fetchEntries,
+    refresh,
     unlock,
     lock,
     createItem,
