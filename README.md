@@ -27,6 +27,7 @@
 
 ## 项目文档
 
+- [在线文档（VuePress / GitHub Pages）](https://chansanya.github.io/navigation/)
 - [快速上手](docs/QUICKSTART.md)
 - [部署指南](docs/DEPLOY.md)
 - [本版本待发布事项](RELEASE_TODO.md)
@@ -194,6 +195,8 @@ npm run sync:local-db
 
 客户端应先查询分类或搜索站点，再预览操作，并在用户确认预览内容后调用写入工具。MCP 不允许访问“隐私空间”、创建分类或删除站点。未配置 `MCP_API_TOKEN` 时，`/mcp` 返回 `503`。
 
+管理员在 `/sites` 认证登录后，可点击右上角“接入文档”按钮打开 MCP 接入弹窗，直接读取并复制当前接入地址、`MCP_API_TOKEN` 与客户端 JSON 配置。
+
 ## API 概览
 
 MCP 端点：
@@ -217,6 +220,7 @@ MCP 端点：
 管理端点：
 
 - `POST /api/auth/verify`
+- `GET /api/mcp/config`
 - `POST /api/sites`
 - `PUT /api/sites/:id`
 - `DELETE /api/sites/:id`

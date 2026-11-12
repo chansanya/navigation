@@ -12,6 +12,13 @@ Navigation 内置了基于 **Streamable HTTP** 传输协议的远程 MCP（Model
 `MCP_API_TOKEN` 请使用独立的高熵随机字符串，不要与 `ADMIN_TOKEN` 或 `PRIVATE_PASSWORD` 复用。未配置时 `/mcp` 会返回 `503`。
 :::
 
+## 页面内快捷查看（仅管理员）
+
+管理员在导航页 `/sites` 认证登录后，可点击右上角 **接入文档** 按钮打开内置 MCP 文档弹窗：
+
+- 自动读取服务端 `MCP_API_TOKEN`（通过 `GET /api/mcp/config`，需管理员登录态且响应头设置 `Cache-Control: no-store`）
+- 支持一键复制 MCP 接入地址、`MCP_API_TOKEN`、`Authorization` 请求头及完整客户端 JSON 配置
+
 ## 客户端配置示例
 
 在支持远程 Streamable HTTP MCP 的客户端（如 Claude Desktop、Cursor、Antigravity 等）中添加如下配置：

@@ -47,6 +47,7 @@
       </div>
       <div class="header-actions">
         <button
+          v-if="authStore.isAuthenticated"
           type="button"
           class="btn-admin btn-docs"
           title="接入文档"
@@ -211,7 +212,7 @@
     />
 
     <McpDocsModal
-      v-if="showDocsModal"
+      v-if="showDocsModal && authStore.isAuthenticated"
       @close="showDocsModal = false"
     />
 
@@ -297,6 +298,7 @@ watch(() => authStore.isAuthenticated, (isAuthenticated) => {
     showSettings.value = false
     editMode.value = false
     showVaultModal.value = false
+    showDocsModal.value = false
     vaultStore.lock()
   }
 })

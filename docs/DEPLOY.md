@@ -190,6 +190,8 @@ Authorization: Bearer <MCP_API_TOKEN>
 
 `previewToken` 与 `updateToken` 有效期均为 10 分钟，经过签名且不能修改其中字段。写入前会重新检查分类和重复 URL。MCP 不支持隐私空间、创建分类或删除站点。
 
+管理员在 `/sites` 登录后，可通过右上角“接入文档”按钮调用 `GET /api/mcp/config` 直接读取并复制当前域名的 MCP 端点、`MCP_API_TOKEN` 及客户端配置示例。
+
 设置远程 Secret：
 
 ```bash

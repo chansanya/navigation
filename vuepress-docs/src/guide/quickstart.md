@@ -64,7 +64,7 @@ npx wrangler d1 execute navigation_db --remote --file=./db/migrations/20260626_a
 - 同步 Cloudflare Pages/Workers 项目
 - 导入浏览器书签（支持搜索、分页、批量分类与自动剔除重复 URL）
 - 点击站点卡片星标加入或移除搜索页快捷方式
-- 点击顶部文档按钮查看远程 MCP 接入信息
+- 点击顶部文档按钮查看远程 MCP 接入信息，直接读取并复制接入地址、`MCP_API_TOKEN` 与客户端配置（仅管理员可见）
 
 ### 推荐投稿与审核
 

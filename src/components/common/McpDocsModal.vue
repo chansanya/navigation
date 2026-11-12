@@ -15,7 +15,7 @@
               class="btn-copy"
               type="button"
               title="复制"
-              @click="copyToClipboard(mcpEndpoint)"
+              @click="copyToClipboard(mcpEndpoint, 'endpoint')"
             >
               {{ copiedField === 'endpoint' ? '✓' : '复制' }}
             </button>
@@ -24,12 +24,42 @@
         </section>
 
         <section class="docs-section">
-          <h3>🔑 认证方式</h3>
+          <h3>🔑 认证方式（MCP_API_TOKEN）</h3>
           <p>请求头携带 Bearer Token：</p>
-          <div class="docs-code-block">
-            <code>Authorization: Bearer &lt;MCP_API_TOKEN&gt;</code>
+          <div v-if="loadingConfig" class="docs-code-block">
+            <code>正在读取 MCP_API_TOKEN...</code>
           </div>
-          <p class="docs-hint">Token 通过环境变量 <code>MCP_API_TOKEN</code> 配置。</p>
+          <div v-else-if="configError" class="docs-warning">
+            {{ configError }}
+          </div>
+          <template v-else-if="mcpToken">
+            <div class="docs-code-block">
+              <code>{{ mcpToken }}</code>
+              <button
+                class="btn-copy"
+                type="button"
+                title="复制 Token"
+                @click="copyToClipboard(mcpToken, 'token')"
+              >
+                {{ copiedField === 'token' ? '✓' : '复制' }}
+              </button>
+            </div>
+            <div class="docs-code-block">
+              <code>Authorization: Bearer {{ mcpToken }}</code>
+              <button
+                class="btn-copy"
+                type="button"
+                title="复制请求头"
+                @click="copyToClipboard(`Authorization: Bearer ${mcpToken}`, 'header')"
+              >
+                {{ copiedField === 'header' ? '✓' : '复制' }}
+              </button>
+            </div>
+          </template>
+          <div v-else class="docs-warning">
+            服务端尚未配置 <code>MCP_API_TOKEN</code> 环境变量，当前 <code>/mcp</code> 接口不可用（返回 503）。请在 <code>.dev.vars</code> 或 Cloudflare Pages 环境变量中配置后重新部署。
+          </div>
+          <p class="docs-hint">仅已登录管理员可见，Token 读取自服务端环境变量 <code>MCP_API_TOKEN</code>。</p>
         </section>
 
         <section class="docs-section">
@@ -136,7 +166,7 @@
               class="btn-copy"
               type="button"
               title="复制"
-              @click="copyToClipboard(configExample)"
+              @click="copyToClipboard(configExample, 'config')"
             >
               {{ copiedField === 'config' ? '✓' : '复制' }}
             </button>
@@ -148,13 +178,23 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+
+interface McpConfigResponse {
+  success?: boolean
+  configured?: boolean
+  token?: string
+  error?: string
+}
 
 defineEmits<{
   close: []
 }>()
 
 const copiedField = ref('')
+const loadingConfig = ref(true)
+const mcpToken = ref('')
+const configError = ref('')
 
 const siteOrigin = computed(() => {
   return window.location.origin
@@ -165,22 +205,51 @@ const mcpEndpoint = computed(() => {
 })
 
 const configExample = computed(() => {
+  const tokenText = mcpToken.value || '<你的 MCP_API_TOKEN>'
   return JSON.stringify({
     mcpServers: {
       navigation: {
         url: mcpEndpoint.value,
         headers: {
-          Authorization: 'Bearer <你的 MCP_API_TOKEN>'
+          Authorization: `Bearer ${tokenText}`
         }
       }
     }
   }, null, 2)
 })
 
-async function copyToClipboard(text: string) {
+async function fetchMcpConfig() {
+  loadingConfig.value = true
+  configError.value = ''
+
+  try {
+    const response = await fetch('/api/mcp/config', {
+      credentials: 'same-origin'
+    })
+    const data = await response.json() as McpConfigResponse
+
+    if (!response.ok || !data.success) {
+      configError.value = data.error || '读取 MCP 配置失败'
+      mcpToken.value = ''
+      return
+    }
+
+    mcpToken.value = data.token || ''
+  } catch {
+    configError.value = '读取 MCP 配置失败，请确认已启动 Pages Functions 服务'
+    mcpToken.value = ''
+  } finally {
+    loadingConfig.value = false
+  }
+}
+
+onMounted(() => {
+  fetchMcpConfig()
+})
+
+async function copyToClipboard(text: string, field: string) {
   try {
     await navigator.clipboard.writeText(text)
-    const field = text.includes('{') ? 'config' : 'endpoint'
     copiedField.value = field
     window.setTimeout(() => {
       if (copiedField.value === field) {
@@ -281,6 +350,17 @@ async function copyToClipboard(text: string) {
 .docs-hint {
   font-size: 12px !important;
   color: #9ca3af !important;
+}
+
+.docs-warning {
+  padding: 10px 14px;
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  color: #92400e;
+  font-size: 12.5px;
+  line-height: 1.5;
+  margin: var(--spacing-sm) 0;
 }
 
 .docs-code-block {
