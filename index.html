@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="generator" content="VuePress 2.0.0-rc.31" />
+    <style>
+      :root {
+        --vp-c-bg: #fff;
+      }
+
+      [data-theme='dark'] {
+        --vp-c-bg: #1b1b1f;
+      }
+
+      html,
+      body {
+        background-color: var(--vp-c-bg);
+      }
+    </style>
+    <script>
+      const useChoice = localStorage.getItem('vuepress-color-scheme')
+      const systemStatus =
+        'matchMedia' in window
+          ? window.matchMedia('(prefers-color-scheme: dark)').matches
+          : false
+
+      if (useChoice === 'light') {
+        document.documentElement.dataset.theme = 'light'
+      } else if (useChoice === 'dark' || systemStatus) {
+        document.documentElement.dataset.theme = 'dark'
+      }
+    </script>
+    <link rel="icon" href="/navigation/favicon.svg"><title>首页 | Navigation</title><meta name="description" content="个人导航站文档 — 基于 Vue 3 + Cloudflare Pages + D1">
+    <link rel="preload" href="/navigation/assets/style-DJsZWTjH.css" as="style"><link rel="stylesheet" href="/navigation/assets/style-DJsZWTjH.css">
+    <link rel="modulepreload" href="/navigation/assets/app-emVcXW0S.js"><link rel="modulepreload" href="/navigation/assets/README-B8IaGZfe.js">
+    
+  </head>
+  <body>
+    <div id="app"><!--[--><div class="vp-theme-container no-sidebar external-link-icon" vp-container><!--[--><header class="vp-navbar" vp-navbar><div class="vp-toggle-sidebar-button" title="toggle sidebar" aria-expanded="false" role="button" tabindex="0"><div class="icon" aria-hidden="true"><span></span><span></span><span></span></div></div><span><a class="route-link" href="/navigation/"><img class="vp-site-logo" src="/navigation/logo.svg" alt="Navigation"><span class="vp-site-name vp-hide-mobile" aria-hidden="true">Navigation</span></a></span><div class="vp-navbar-items-wrapper" style=""><!--[--><!--]--><nav class="vp-navbar-items vp-hide-mobile" aria-label="site navigation"><!--[--><div class="vp-navbar-item"><a class="route-link route-link-active auto-link" href="/navigation/" aria-label="首页"><!--[--><!--[--><!--]--><!--]-->首页<!--[--><!--[--><!--]--><!--]--></a></div><div class="vp-navbar-item"><a class="route-link auto-link" href="/navigation/guide/quickstart.html" aria-label="快速上手"><!--[--><!--[--><!--]--><!--]-->快速上手<!--[--><!--[--><!--]--><!--]--></a></div><div class="vp-navbar-item"><a class="route-link auto-link" href="/navigation/guide/deploy.html" aria-label="部署指南"><!--[--><!--[--><!--]--><!--]-->部署指南<!--[--><!--[--><!--]--><!--]--></a></div><div class="vp-navbar-item"><a class="route-link auto-link" href="/navigation/guide/mcp.html" aria-label="MCP 接入"><!--[--><!--[--><!--]--><!--]-->MCP 接入<!--[--><!--[--><!--]--><!--]--></a></div><div class="vp-navbar-item"><a class="auto-link external-link" href="https://github.com/chansanya/navigation" aria-label="GitHub" rel="noopener noreferrer" target="_blank"><!--[--><!--[--><!--]--><!--]-->GitHub<!--[--><!--[--><!--]--><!--]--></a></div><!--]--></nav><!--[--><!--]--><button type="button" class="vp-toggle-color-mode-button" title="toggle color mode"><svg class="light-icon" viewbox="0 0 32 32" style=""><path d="M16 12.005a4 4 0 1 1-4 4a4.005 4.005 0 0 1 4-4m0-2a6 6 0 1 0 6 6a6 6 0 0 0-6-6z" fill="currentColor"></path><path d="M5.394 6.813l1.414-1.415l3.506 3.506L8.9 10.318z" fill="currentColor"></path><path d="M2 15.005h5v2H2z" fill="currentColor"></path><path d="M5.394 25.197L8.9 21.691l1.414 1.415l-3.506 3.505z" fill="currentColor"></path><path d="M15 25.005h2v5h-2z" fill="currentColor"></path><path d="M21.687 23.106l1.414-1.415l3.506 3.506l-1.414 1.414z" fill="currentColor"></path><path d="M25 15.005h5v2h-5z" fill="currentColor"></path><path d="M21.687 8.904l3.506-3.506l1.414 1.415l-3.506 3.505z" fill="currentColor"></path><path d="M15 2.005h2v5h-2z" fill="currentColor"></path></svg><svg class="dark-icon" viewbox="0 0 32 32" style="display:none;"><path d="M13.502 5.414a15.075 15.075 0 0 0 11.594 18.194a11.113 11.113 0 0 1-7.975 3.39c-.138 0-.278.005-.418 0a11.094 11.094 0 0 1-3.2-21.584M14.98 3a1.002 1.002 0 0 0-.175.016a13.096 13.096 0 0 0 1.825 25.981c.164.006.328 0 .49 0a13.072 13.072 0 0 0 10.703-5.555a1.01 1.01 0 0 0-.783-1.565A13.08 13.08 0 0 1 15.89 4.38A1.015 1.015 0 0 0 14.98 3z" fill="currentColor"></path></svg></button><!----></div></header><!--]--><div class="vp-sidebar-mask"></div><!--[--><aside class="vp-sidebar" vp-sidebar><nav class="vp-navbar-items" aria-label="site navigation"><!--[--><div class="vp-navbar-item"><a class="route-link route-link-active auto-link" href="/navigation/" aria-label="首页"><!--[--><!--[--><!--]--><!--]-->首页<!--[--><!--[--><!--]--><!--]--></a></div><div class="vp-navbar-item"><a class="route-link auto-link" href="/navigation/guide/quickstart.html" aria-label="快速上手"><!--[--><!--[--><!--]--><!--]-->快速上手<!--[--><!--[--><!--]--><!--]--></a></div><div class="vp-navbar-item"><a class="route-link auto-link" href="/navigation/guide/deploy.html" aria-label="部署指南"><!--[--><!--[--><!--]--><!--]-->部署指南<!--[--><!--[--><!--]--><!--]--></a></div><div class="vp-navbar-item"><a class="route-link auto-link" href="/navigation/guide/mcp.html" aria-label="MCP 接入"><!--[--><!--[--><!--]--><!--]-->MCP 接入<!--[--><!--[--><!--]--><!--]--></a></div><div class="vp-navbar-item"><a class="auto-link external-link" href="https://github.com/chansanya/navigation" aria-label="GitHub" rel="noopener noreferrer" target="_blank"><!--[--><!--[--><!--]--><!--]-->GitHub<!--[--><!--[--><!--]--><!--]--></a></div><!--]--></nav><!--[--><!--]--><!----><!--[--><!--]--></aside><!--]--><!--[--><main class="vp-home"><header class="vp-hero"><img class="vp-hero-image" src="/navigation/logo.svg" alt="Navigation" height="280"><h1 id="main-title">Navigation</h1><p class="vp-hero-description">基于 Vue 3 + Cloudflare Pages + D1 构建的个人网址导航站，支持远程 MCP AI 管理</p><p class="vp-hero-actions"><!--[--><a class="route-link auto-link vp-hero-action-button primary" href="/navigation/guide/quickstart.html" aria-label="快速上手"><!--[--><!--[--><!--]--><!--]-->快速上手<!--[--><!--[--><!--]--><!--]--></a><a class="route-link auto-link vp-hero-action-button secondary" href="/navigation/guide/mcp.html" aria-label="MCP 接入"><!--[--><!--[--><!--]--><!--]-->MCP 接入<!--[--><!--[--><!--]--><!--]--></a><!--]--></p></header><div class="vp-features"><!--[--><div class="vp-feature"><h2>无服务器全栈架构</h2><p>基于 Cloudflare Pages + Pages Functions + D1 (SQLite) 构建，零服务器运维成本即可自托管部署。</p></div><div class="vp-feature"><h2>远程 MCP AI 管理</h2><p>内置 Streamable HTTP MCP 服务端点，AI 助手可通过预览确认机制安全地检索、添加与修改导航站点。</p></div><div class="vp-feature"><h2>隐私空间与密码保险箱</h2><p>支持隐藏式隐私空间分类与前端 WebCrypto 加密的随身记录，服务端仅存储密文。</p></div><div class="vp-feature"><h2>深度外观定制</h2><p>支持毛玻璃与赛博朋克主题、图片/视频/粒子背景，以及顶栏、菜单和卡片的细粒度颜色与透明度配置。</p></div><div class="vp-feature"><h2>访客投稿与审核</h2><p>访客可提交推荐站点并自动抓取元数据，管理员审核通过后正式收录并检测重复 URL。</p></div><div class="vp-feature"><h2>书签与 Cloudflare 同步</h2><p>支持浏览器书签导入导出，并可从 Cloudflare 账号自动同步 Pages/Workers 项目。</p></div><!--]--></div><div vp-content><div></div></div><!--[--><div class="vp-footer" vp-footer>Navigation Docs | Powered by VuePress</div><!--]--></main><!--]--></div><!--[--><!----><!--]--><!--]--></div>
+    <script type="module" src="/navigation/assets/app-emVcXW0S.js" defer></script>
+  </body>
+</html>
