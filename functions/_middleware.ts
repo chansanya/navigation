@@ -6,6 +6,14 @@ interface Env {
   DB: D1Database
   ADMIN_TOKEN: string
   PRIVATE_PASSWORD?: string
+  MCP_API_TOKEN?: string
+}
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, MCP-Protocol-Version, Last-Event-ID',
+  'Access-Control-Expose-Headers': 'Mcp-Session-Id, MCP-Protocol-Version, WWW-Authenticate, X-Request-Id'
 }
 
 export const onRequest: PagesFunction<Env> = async (context) => {
@@ -15,10 +23,8 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   if (request.method === 'OPTIONS') {
     return new Response(null, {
       headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Max-Age': '86400',
+        ...corsHeaders,
+        'Access-Control-Max-Age': '86400'
       },
     })
   }
@@ -39,9 +45,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   // 添加 CORS 头
   // Pages Functions 返回的 Response headers 不可直接改，复制一份再重建响应。
   const newHeaders = new Headers(response.headers)
-  newHeaders.set('Access-Control-Allow-Origin', '*')
-  newHeaders.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  newHeaders.set('Access-Control-Allow-Headers', 'Content-Type')
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    newHeaders.set(key, value)
+  }
 
   return new Response(response.body, {
     status: response.status,

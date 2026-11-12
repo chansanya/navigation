@@ -126,7 +126,7 @@ npm run pages:deploy
 ./release.sh --all --project navigation --db navigation_db
 ```
 
-`--set-env` 会设置 `ADMIN_TOKEN`、`PRIVATE_PASSWORD` 和已配置的 MyApp 同步变量。`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` 属于应用内 Cloudflare 项目同步功能的可选配置，需要时可在 Cloudflare Pages 控制台单独配置。
+`--set-env` 会设置 `ADMIN_TOKEN`、`PRIVATE_PASSWORD`、`MCP_API_TOKEN` 和已配置的 MyApp 同步变量。`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID` 属于应用内 Cloudflare 项目同步功能的可选配置，需要时可在 Cloudflare Pages 控制台单独配置。
 
 在 Cloudflare Dashboard 中配置 Pages 项目：
 
@@ -146,6 +146,7 @@ npm run pages:deploy
 推荐配置：
 
 - `PRIVATE_PASSWORD`：隐私模式密钥。用户在站点页标题后方隐藏区域连续点击 6 次后输入该值，解锁后才能查看和管理 `隐私空间` 分类。
+- `MCP_API_TOKEN`：远程 MCP 专用高熵 Bearer Token。仅用于 `/mcp`，不要与管理密钥或隐私密码复用；未配置时 MCP 返回 `503`。
 
 Cloudflare 项目同步可选：
 
@@ -162,6 +163,40 @@ MyApp 随身记录同步可选：
 拉取同步适配 MyApp `schemaVersion = 4` 导出结构，主路径读取 `notes`、`accounts`，账户 `accountType` 会保存为账号分类；旧版 `codeAccounts` 仅作为兼容 fallback。同步到 MyApp 时，会先调用 MyApp 被动同步预检接口，用户确认选中的新增、更新或冲突项后再写入。
 
 建议 `ADMIN_TOKEN` 和隐私模式密钥使用不同的高强度字符串。修改生产环境变量后，需要重新部署或重新启动 Pages Functions 运行环境后生效。
+
+## 远程 MCP
+
+MCP 与 Pages Functions 一起部署并复用现有 `DB` binding，无需单独 Worker、域名或数据库配置。
+
+连接参数：
+
+```text
+Transport: Streamable HTTP
+URL: https://<你的域名>/mcp
+Authorization: Bearer <MCP_API_TOKEN>
+```
+
+工具调用顺序：
+
+添加站点：
+1. `list_site_categories` 获取已有公开分类。
+2. `preview_site` 传入 URL 和分类，检查重复并生成站点预览。
+3. 用户确认预览内容后，将返回的 `previewToken` 传给 `add_site`。
+
+修改站点：
+1. `search_sites` 按关键词搜索已有站点并获取站点 ID。
+2. `preview_update_site` 传入 `siteId` 与修改字段，校验并生成修改预览。
+3. 用户确认修改内容后，将返回的 `updateToken` 传给 `update_site`。
+
+`previewToken` 与 `updateToken` 有效期均为 10 分钟，经过签名且不能修改其中字段。写入前会重新检查分类和重复 URL。MCP 不支持隐私空间、创建分类或删除站点。
+
+设置远程 Secret：
+
+```bash
+printf '%s' '<高熵随机值>' | npx wrangler pages secret put MCP_API_TOKEN --project-name navigation
+```
+
+也可以把该值写入本地 `.dev.vars` 后执行 `./release.sh --set-env`。脚本只通过 stdin 提交 Secret，不会输出实际值。
 
 ## 隐私空间
 

@@ -8,6 +8,7 @@
 - 顶部站点搜索，支持跨全部分类按名称和描述搜索
 - 搜索主页，支持搜索引擎切换和 D1 持久化快捷方式
 - 管理员令牌认证后可新增、编辑、删除站点和分类
+- 标准远程 MCP 支持“分类查询 → 站点预览 → 确认写入”的快速添加流程，以及站点搜索与预览确认修改流程
 - 新增、编辑、推荐和审核收录都会检测重复 URL，避免重复站点入库
 - Cloudflare Pages/Workers 项目同步，已存在 URL 自动识别
 - 未认证访客可在首页和搜索页右下角提交推荐站点，管理员审核后收录
@@ -124,6 +125,7 @@ npm run sync:local-db
 
 - D1 绑定：`DB`
 - 环境变量：`ADMIN_TOKEN`
+- 可选 MCP 写入密钥：`MCP_API_TOKEN`
 - 可选隐私密码：`PRIVATE_PASSWORD`
 - 可选 Cloudflare 同步：`CLOUDFLARE_API_TOKEN`、`CLOUDFLARE_ACCOUNT_ID`
 - 可选 MyApp 同步：`MYAPP_BASE_URL`、`MYAPP_EXPORT_KEY`、`MYAPP_PAYLOAD_KEY_PREFIX`、`MYAPP_SYNC_SOURCE`
@@ -132,6 +134,7 @@ npm run sync:local-db
 
 - `ADMIN_TOKEN` 是管理密钥。管理员在 `/sites` 点击认证入口后输入它，认证后才能审核投稿、同步 Cloudflare 项目、导入书签、新增站点、进入编辑模式和打开外观设置。
 - `PRIVATE_PASSWORD` 是隐私模式密钥。用户在站点页标题后方隐藏区域连续点击 6 次后输入它，解锁后才能查看和管理 `隐私空间` 分类。
+- `MCP_API_TOKEN` 是远程 MCP 专用 Bearer Token，只允许通过预览确认流程向已有公开分类添加或修改站点。不要与 `ADMIN_TOKEN` 或 `PRIVATE_PASSWORD` 复用。
 - 这两个密钥用途不同，建议设置为不同的高强度字符串。不要把真实密钥写入公开仓库。
 
 ## 数据库表
@@ -176,7 +179,26 @@ npm run sync:local-db
 - MyApp 拉取适配 `schemaVersion = 4`，主路径读取 `notes`、`accounts`；`accounts[].fields.accountType` 会保存为账号分类，旧版 `codeAccounts` 仅作为兼容 fallback
 - 随身记录也支持“同步到 MyApp”：本地账号和记录会先提交到 MyApp 被动同步预检，确认选中的新增、更新或冲突项后才写入 MyApp
 
+## MCP 管理站点
+
+部署并配置 `MCP_API_TOKEN` 后，可通过标准 Streamable HTTP MCP 接入：
+
+- Endpoint：`https://<你的域名>/mcp`
+- Header：`Authorization: Bearer <MCP_API_TOKEN>`
+- `list_site_categories`：列出已有公开分类
+- `search_sites`：按关键词搜索已有公开站点
+- `preview_site`：校验 URL 和分类、检测重复并抓取站点信息，不写数据库
+- `add_site`：使用 `preview_site` 返回的 10 分钟短期凭证确认写入
+- `preview_update_site`：预览对已有站点的修改内容，生成 10 分钟短期确认凭证
+- `update_site`：使用 `preview_update_site` 返回的凭证确认写入修改
+
+客户端应先查询分类或搜索站点，再预览操作，并在用户确认预览内容后调用写入工具。MCP 不允许访问“隐私空间”、创建分类或删除站点。未配置 `MCP_API_TOKEN` 时，`/mcp` 返回 `503`。
+
 ## API 概览
+
+MCP 端点：
+
+- `GET/POST /mcp`，使用独立 Bearer Token 认证
 
 公开端点：
 
@@ -216,7 +238,7 @@ npm run sync:local-db
 - `POST /api/integrations/myapp/passive/confirm`
 
 管理员登录和隐私模式都使用服务端签名的 `HttpOnly` Cookie，会话密钥不会写入 localStorage 或 sessionStorage。
-管理员令牌、隐私密码、公开自动解析和图标代理均有 D1 轻量限流保护。
+管理员令牌、隐私密码、公开自动解析和图标代理均有 D1 轻量限流保护。MCP 使用独立高熵 Bearer Token，日志不会记录 Token、预览凭证或网页正文。
 
 URL 重复检测会规范化 http/https URL，忽略末尾 `/`、域名大小写和默认端口差异。
 

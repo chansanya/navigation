@@ -19,6 +19,7 @@ const iconUrls = {
   chevronDown: new URL('../../assets/icons/chevron-down.svg', import.meta.url).href,
   cloudSync: new URL('../../assets/icons/cloud-sync.svg', import.meta.url).href,
   close: new URL('../../assets/icons/close.svg', import.meta.url).href,
+  docs: new URL('../../assets/icons/docs.svg', import.meta.url).href,
   editMode: new URL('../../assets/icons/edit-mode.svg', import.meta.url).href,
   eye: new URL('../../assets/icons/eye.svg', import.meta.url).href,
   eyeOff: new URL('../../assets/icons/eye-off.svg', import.meta.url).href,

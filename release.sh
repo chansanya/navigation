@@ -45,7 +45,7 @@ print_help() {
 
 说明:
   .dev.vars 不会提交到仓库；示例文件是 .dev.vars.example。
-  会设置 ADMIN_TOKEN、PRIVATE_PASSWORD 和已配置的 MyApp 同步变量，不会打印变量值。
+  会设置 ADMIN_TOKEN、PRIVATE_PASSWORD、MCP_API_TOKEN 和已配置的 MyApp 同步变量，不会打印变量值。
 EOF
 }
 
@@ -161,6 +161,7 @@ set_remote_env() {
 
   set_pages_secret ADMIN_TOKEN
   set_pages_secret PRIVATE_PASSWORD
+  set_pages_secret MCP_API_TOKEN
   set_pages_secret MYAPP_BASE_URL
   set_pages_secret MYAPP_EXPORT_KEY
   set_pages_secret MYAPP_PAYLOAD_KEY_PREFIX

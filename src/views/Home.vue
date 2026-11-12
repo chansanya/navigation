@@ -47,6 +47,15 @@
       </div>
       <div class="header-actions">
         <button
+          type="button"
+          class="btn-admin btn-docs"
+          title="接入文档"
+          aria-label="接入文档"
+          @click="showDocsModal = true"
+        >
+          <AppIcon name="docs" />
+        </button>
+        <button
           v-if="authStore.isAuthenticated && privacyStore.isUnlocked"
           type="button"
           class="btn-admin btn-vault"
@@ -201,6 +210,11 @@
       @close="showVaultModal = false"
     />
 
+    <McpDocsModal
+      v-if="showDocsModal"
+      @close="showDocsModal = false"
+    />
+
     <!-- 设置面板 -->
     <transition name="slide">
       <div v-if="showSettings && authStore.isAuthenticated" class="settings-overlay" @click="showSettings = false">
@@ -248,6 +262,7 @@ import BookmarkImport from '@/components/admin/BookmarkImport.vue'
 import BookmarkExport from '@/components/admin/BookmarkExport.vue'
 import SubmissionReviewModal from '@/components/admin/SubmissionReviewModal.vue'
 import PasswordVault from '@/components/admin/PasswordVault.vue'
+import McpDocsModal from '@/components/common/McpDocsModal.vue'
 
 const sitesStore = useSitesStore()
 const settingsStore = useSettingsStore()
@@ -262,6 +277,7 @@ const showImportModal = ref(false)
 const showBookmarkImportModal = ref(false)
 const showReviewModal = ref(false)
 const showVaultModal = ref(false)
+const showDocsModal = ref(false)
 const editMode = ref(false)
 const editingSite = ref<Site | null>(null)
 const selectedCategory = ref('')

@@ -3,6 +3,7 @@
 
 ADMIN_TOKEN=change-me-admin-token
 PRIVATE_PASSWORD=change-me-private-password
+MCP_API_TOKEN=change-me-high-entropy-mcp-token
 
 # Optional: enable Cloudflare Pages/Workers project sync in the admin UI.
 CLOUDFLARE_API_TOKEN=

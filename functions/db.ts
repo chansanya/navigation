@@ -118,7 +118,7 @@ export async function findSiteByUrl(db: D1Database, url: string, excludeId?: num
   if (!normalizedUrl) return null
 
   // D1/SQLite 里无法直接表达这里的完整 URL 归一化规则，先取必要字段再在 JS 层比较。
-  const { results } = await db.prepare('SELECT id, name, url FROM sites').all()
+  const { results } = await db.prepare('SELECT id, name, url, category FROM sites').all()
   const site = (results as unknown as Site[]).find((item) => {
     if (excludeId && item.id === excludeId) return false
     return normalizeUrlForCompare(item.url) === normalizedUrl

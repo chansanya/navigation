@@ -15,11 +15,13 @@
     "sync:local-db": "bash scripts/sync-local.sh"
   },
   "dependencies": {
+    "@modelcontextprotocol/server": "^2.2.0",
     "jsdom": "^29.1.1",
     "particles.js": "^2.0.0",
     "pinia": "^2.1.7",
     "vue": "^3.4.21",
-    "vue-router": "^4.3.0"
+    "vue-router": "^4.3.0",
+    "zod": "^4.6.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240512.0",
