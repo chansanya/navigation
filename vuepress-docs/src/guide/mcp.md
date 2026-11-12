@@ -102,3 +102,22 @@ search_sites(keyword)  ──▶  preview_update_site(siteId, ...)  ──▶  �
 - **上下文隔离**：新增凭证与修改凭证使用独立的签名前缀，不能互相混用。
 - **隐私隔离**：MCP 无法读取、搜索、修改或新增 `隐私空间` 分类下的任何站点。
 - **SSRF 与重复防护**：自动拦截内网/本地地址，并在预览与写入阶段双重检测重复 URL。
+
+## 专属通用 Agent Skill（`navigation-site`）
+
+仓库的 `skills/navigation-site/` 目录下提供了一份跨 Agent 通用的专属 Skill，用于指导各类 AI 助手完成“查分类 → 抓取预览 → 用户确认 → 写入/更新站点”全流程：
+
+- `skills/navigation-site/SKILL.md`：通用技能指令（YAML Frontmatter + 工作流）
+- `skills/navigation-site/references/mcp-clients.md`：各主流 Agent MCP 配置与 HTTP 降级调用示例
+- `skills/navigation-site/agents/openai.yaml`：界面显示元数据
+
+需要使用的用户可自行复制 `skills/navigation-site/` 到对应 Agent 的技能目录：
+
+- **Antigravity / Codex / Cursor / Gemini CLI / OpenCode**：复制到 `~/.agents/skills/navigation-site/`（或目标项目 `.agents/skills/navigation-site/`）
+- **Claude Code**：复制到 `~/.claude/skills/navigation-site/`（或目标项目 `.claude/skills/navigation-site/`）
+
+也可以使用通用安装命令：
+
+```bash
+npx skills add chansanya/navigation --skill navigation-site
+```

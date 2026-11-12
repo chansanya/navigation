@@ -197,6 +197,8 @@ npm run sync:local-db
 
 管理员在 `/sites` 认证登录后，可点击右上角“接入文档”按钮打开 MCP 接入弹窗，直接读取并复制当前接入地址、`MCP_API_TOKEN` 与客户端 JSON 配置。
 
+仓库同时提供了跨 Agent 通用的专属 Skill（[skills/navigation-site](skills/navigation-site/SKILL.md)），可按需复制到 Antigravity、Claude Code、Codex、Cursor、Gemini CLI 等客户端的技能目录使用（或运行 `npx skills add chansanya/navigation --skill navigation-site`）。
+
 ## API 概览
 
 MCP 端点：
