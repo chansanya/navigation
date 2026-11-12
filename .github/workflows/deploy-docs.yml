@@ -1,0 +1,43 @@
+name: Deploy VuePress Docs to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'vuepress-docs/**'
+      - '.github/workflows/deploy-docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: 'vuepress-docs/package-lock.json'
+
+      - name: Install dependencies
+        working-directory: vuepress-docs
+        run: npm install
+
+      - name: Build VuePress site
+        working-directory: vuepress-docs
+        run: npm run docs:build
+
+      - name: Deploy to gh-pages branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: vuepress-docs/src/.vuepress/dist
+          commit_message: 'docs: deploy vuepress docs'

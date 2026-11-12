@@ -11,4 +11,7 @@ wrangler.toml
 !wrangler.toml.example
 wrangler.toml.local
 scripts/sql/*.sql
-guide/
+/guide/
+vuepress-docs/src/.vuepress/.temp
+vuepress-docs/src/.vuepress/.cache
+vuepress-docs/src/.vuepress/dist

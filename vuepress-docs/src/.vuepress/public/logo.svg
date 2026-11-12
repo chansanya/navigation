@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="route" x1="14" y1="18" x2="51" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38bdf8"/>
+      <stop offset="0.55" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#a78bfa"/>
+    </linearGradient>
+    <filter id="glow" x="-28%" y="-28%" width="156%" height="156%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.2" flood-color="#020617" flood-opacity="0.35"/>
+      <feGaussianBlur stdDeviation="1.35" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <path d="M17 42L28 22L45 33L33 45L17 42Z" fill="none" stroke="#f8fafc" stroke-opacity="0.78" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" opacity="0.58"/>
+  <path d="M17 42L28 22L45 33L33 45L17 42Z" fill="none" stroke="url(#route)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)"/>
+
+  <circle cx="17" cy="42" r="5.2" fill="#0f172a" stroke="#38bdf8" stroke-width="3"/>
+  <circle cx="28" cy="22" r="5.2" fill="#0f172a" stroke="#22d3ee" stroke-width="3"/>
+  <circle cx="45" cy="33" r="5.2" fill="#0f172a" stroke="#a78bfa" stroke-width="3"/>
+  <circle cx="33" cy="45" r="5.2" fill="#0f172a" stroke="#67e8f9" stroke-width="3"/>
+
+  <path d="M32 30L38 25L35 34L26 39L29 31L32 30Z" fill="#f8fafc"/>
+  <path d="M32 30L38 25L35 34L32 30Z" fill="#22d3ee"/>
+</svg>
